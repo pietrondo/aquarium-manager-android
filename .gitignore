@@ -15,3 +15,11 @@ generated/
 .beads/proxieddb/
 /.beads-quarantine-isolation/
 /.beads-quarantine-isolation-2/
+
+# Local Android/Gradle toolchain and build output
+.gradle/
+.kotlin/
+.toolchain/
+**/build/
+.idea/
+*.iml

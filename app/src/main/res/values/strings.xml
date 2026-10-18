@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Aquarium Manager</string>
+    <string name="foundation_message">Your aquarium library starts here.</string>
+</resources>

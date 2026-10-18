@@ -2,7 +2,7 @@
 
 An offline-first, multi-aquarium manager planned for **native Kotlin + Jetpack Compose + Material 3**, Clean Architecture, MVVM, repositories and Room.
 
-**Current status:** approved domain/backup design, runnable Python asset tooling and Beads implementation plan. **There is no Android app scaffold yet:** no Gradle wrapper, APK, Room database or working screens. Do not interpret the commands below as a successful Android build.
+**Current status:** native Compose/Material 3 foundation with `:app`, `:domain` and `:data`, verified Gradle wrapper and CI configuration. The app is a minimal placeholder, not a working aquarium manager. Room, domain features, backup and final screens remain future Beads tasks. See [toolchain and build evidence](docs/android-foundation.md).
 
 ## Navigation
 
@@ -57,17 +57,23 @@ python scripts/assets.py resize
 
 Existing originals are cached and never regenerated automatically. Do not retry an uncertain paid request blindly. Generated PNGs remain local/ignored until visual review. Generated resource folders are staging output, **not** a working Android module. No Google API key, OAuth client, Google Cloud project or Google API setup is needed. PixelLab credentials must never enter Android resources, BuildConfig, an APK, logs, commits or backups.
 
-### Planned Android foundation (not executable yet)
+### Android foundation
 
-Install Android Studio with Android SDK/emulator and a compatible JDK. The foundation Beads task must select mutually compatible stable Kotlin, Android Gradle Plugin, Gradle, Compose/Material 3, Room and WorkManager versions from official docs, pin them in `gradle/libs.versions.toml`, check in a genuine Gradle wrapper and wrapper checksum, define namespace/applicationId and SDK levels, and document the selected toolchain. No versions or SDK floor are silently invented in this planning delivery.
+Use JDK 21 (Java/Kotlin bytecode 17), Android SDK platform 36 and build-tools 35.0.0. Open the root in Android Studio, select the same Gradle JDK, and set `ANDROID_HOME` or an ignored `local.properties` with `sdk.dir`. Install SDK packages and review their licenses through Android Studio; do not commit machine paths.
 
-Proposed modules: `:app`, `:domain` (Kotlin/JVM), `:data` (Android library). Keep dependency direction as above; export Room schemas and test migrations without destructive fallbacks. Once that task exists, its acceptance commands will be `./gradlew test lint assembleDebug` (Windows `gradlew.bat test lint assembleDebug`) and emulator instrumentation tests using the actual configured task names. Those commands **cannot run in this repository today**. CI must prove a fresh clone builds without secrets or network at application runtime.
+```powershell
+.\gradlew.bat --no-daemon test lint assembleDebug
+```
+
+Linux/macOS: `bash ./gradlew --no-daemon test lint assembleDebug`. The first build downloads Gradle and Maven dependencies; the APK has no network permission or service credentials. Debug output: `app/build/outputs/apk/debug/app-debug.apk`. [Pinned versions, provenance, emulator setup and validation limits](docs/android-foundation.md).
+
+The modules establish `app -> domain <- data`, with the app composition root also depending on data. Domain is plain Kotlin/JVM; data is an Android library, currently empty. ViewModels, repository contracts, Room schema/migrations and schedulers are deliberately deferred until real feature behavior exists. `test` currently has no Kotlin unit tests; Python foundation checks verify module boundaries, manifest permissions and wrapper pinning. There are no instrumented tests yet.
 
 ## Work tracking and delivery
 
 Use project-local Beads only; see its workflow document for isolation and export caveats. Pending app tasks remain open. The JSONL export is an issue interchange snapshot, not a full Dolt backup. Do not confuse a Git push with Beads database synchronization.
 
-Repository: [pietrondo/aquarium-manager-android](https://github.com/pietrondo/aquarium-manager-android). Public source publication is authorized; the repository remains private until the fresh-review publication gate is completed. Work on `main`; do not deploy or merge into production without explicit authorization. Commits use conventional messages with no AI attribution.
+Repository: [pietrondo/aquarium-manager-android](https://github.com/pietrondo/aquarium-manager-android). Public source publication is authorized; source publication does not imply a store release. Work on `main`; do not deploy or merge into production without explicit authorization. Commits use conventional messages with no AI attribution.
 
 ## License and release disclosures
 

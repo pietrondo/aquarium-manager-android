@@ -1,0 +1,22 @@
+[versions]
+agp = "8.11.1"
+kotlin = "2.2.21"
+composeBom = "2025.12.00"
+activity = "1.12.2"
+# Selected for later persistence/automation tasks; deliberately not runtime dependencies yet.
+room = "2.8.5"
+work = "2.11.2"
+
+[libraries]
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
