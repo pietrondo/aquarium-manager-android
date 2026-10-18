@@ -1,5 +1,10 @@
 from pathlib import Path
 import unittest
+import os
+import shutil
+import subprocess
+import tempfile
+import textwrap
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +37,29 @@ class AndroidFoundationTests(unittest.TestCase):
             workflow,
         )
         self.assertNotIn('0b6dd653ba04f4f93bf581ec31e66cbd7dcb644d', workflow)
+
+    def test_sdk_install_uses_sdk_home_without_sdkmanager_on_path(self):
+        bash = (Path(os.environ.get('ProgramFiles', 'C:/Program Files')) / 'Git/bin/bash.exe'
+                if os.name == 'nt' else Path(shutil.which('bash') or '/bin/bash'))
+        self.assertTrue(bash.is_file(), 'Bash is required to exercise the CI shell block')
+        workflow = (ROOT / '.github/workflows/android.yml').read_text(encoding='utf-8')
+        step = workflow.split('      - name: Install pinned SDK packages\n', 1)[1]
+        run = step.split('      - uses:', 1)[0].split('        run:', 1)[1].strip()
+        script = textwrap.dedent(run[1:]).strip() if run.startswith('|') else run
+        with tempfile.TemporaryDirectory(prefix='android sdk test ') as temp:
+            sdk = Path(temp) / 'sdk with spaces'
+            manager = sdk / 'cmdline-tools/latest/bin/sdkmanager'
+            manager.parent.mkdir(parents=True)
+            manager.write_text('#!/bin/bash\nprintf "%s\\n" "$@" > "$SDK_ARGS_OUTPUT"\n', encoding='utf-8')
+            manager.chmod(0o755)
+            output = Path(temp) / 'arguments.txt'
+            env = dict(os.environ, ANDROID_HOME=sdk.as_posix(),
+                       SDK_ARGS_OUTPUT=output.as_posix(), PATH=temp)
+            result = subprocess.run([str(bash), '--noprofile', '--norc', '-e', '-c', script],
+                                    env=env, capture_output=True, text=True, timeout=15)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(['platforms;android-36', 'build-tools;35.0.0'],
+                             output.read_text(encoding='utf-8').splitlines())
 
     def test_wrapper_distribution_is_checksum_pinned(self):
         self.assertTrue((ROOT / "gradle/wrapper/gradle-wrapper.properties").is_file(), "Verified wrapper is missing")
