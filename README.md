@@ -2,10 +2,11 @@
 
 An offline-first, multi-aquarium manager planned for **native Kotlin + Jetpack Compose + Material 3**, Clean Architecture, MVVM, repositories and Room.
 
-**Current status:** native Compose/Material 3 foundation with `:app`, `:domain` and `:data`, verified Gradle wrapper and CI configuration. The app is a minimal placeholder, not a working aquarium manager. Room, domain features, backup and final screens remain future Beads tasks. See [toolchain and build evidence](docs/android-foundation.md).
+**Current status:** native Compose/Material 3 read-only aquarium list backed by real Room, with lifecycle MVVM and `:app`, `:domain`, `:data` boundaries. A fresh installation correctly shows an empty library: there are no seeded aquariums and no create/edit/delete screens yet. Other domain tables/features, backup, scheduling and final visual design remain future Beads tasks. See the [approved slice](docs/decisions/2026-10-19-room-mvvm-slice.md) and [actual verification evidence](docs/verification.md).
 
 ## Navigation
 
+- [Read-only list and Room core schema](docs/decisions/2026-10-19-room-mvvm-slice.md)
 - [Ordered schema, ERD and full-library backup architecture](docs/decisions/2026-10-18-library-and-backup-design.md)
 - [PixelLab API contract, sizing and verification](docs/assets.md)
 - [Beads workflow and persistence](docs/beads.md)
@@ -67,7 +68,9 @@ Use JDK 21 (Java/Kotlin bytecode 17), Android SDK platform 36 and build-tools 35
 
 Linux/macOS: `bash ./gradlew --no-daemon test lint assembleDebug`. The first build downloads Gradle and Maven dependencies; the APK has no network permission or service credentials. Debug output: `app/build/outputs/apk/debug/app-debug.apk`. [Pinned versions, provenance, emulator setup and validation limits](docs/android-foundation.md).
 
-The modules establish `app -> domain <- data`, with the app composition root also depending on data. Domain is plain Kotlin/JVM; data is an Android library, currently empty. ViewModels, repository contracts, Room schema/migrations and schedulers are deliberately deferred until real feature behavior exists. `test` currently has no Kotlin unit tests; Python foundation checks verify module boundaries, manifest permissions and wrapper pinning. There are no instrumented tests yet.
+The modules implement `presentation -> domain <- data`, with only the application composition root constructing Room/data dependencies. Domain is plain Kotlin/JVM. Room version 1 contains the complete approved aquariums core table (UUID, name, optional exact decimal litres, notes, UTC creation instant); no other planned tables are present. Decimal litres use canonical TEXT, not lossy REAL. Schema JSON is exported under `data/schemas`; future schema changes require non-destructive tested migrations.
+
+Kotlin JVM tests cover domain validation, exact mappings/converters, real Room/SQLite observable reads under Robolectric, and ViewModel loading/list/empty/safe-error/retry/cancellation behavior. Python tests provide focused architecture/configuration and asset-tooling guards, not full architecture proof. There are no instrumented tests yet. See the latest verification entry for executed counts, device smoke and remaining limits; historical foundation entries correctly retain their then-NO-SOURCE results.
 
 ## Work tracking and delivery
 

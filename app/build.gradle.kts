@@ -17,6 +17,7 @@ android {
         versionName = "0.1.0"
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -29,4 +30,11 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)
     implementation(libs.activity.compose)
+    implementation(libs.room.runtime)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.lifecycle.viewmodel.ktx)
+    implementation(libs.coroutines.core)
+    testImplementation(libs.junit)
+    testImplementation(libs.coroutines.test)
+    coreLibraryDesugaring(libs.desugar)
 }

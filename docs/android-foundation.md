@@ -1,5 +1,9 @@
 # Android foundation
 
+## Current feature update — 2026-10-19
+
+The read-only Room/MVVM slice now adds real domain/repository/presentation behavior, exported aquariums schema v1 and Kotlin JVM tests. Room 2.8.5 is now linked; WorkManager remains reserved. The entries below describe the original foundation checkpoint, including its historical NO-SOURCE results, not current feature coverage. See [slice decisions](decisions/2026-10-19-room-mvvm-slice.md) and the latest [verification](verification.md).
+
 ## Pinned baseline
 
 | Component | Selection |

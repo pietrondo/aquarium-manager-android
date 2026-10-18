@@ -25,6 +25,32 @@ class AndroidFoundationTests(unittest.TestCase):
         for source in (ROOT / 'domain/src').rglob('*.kt'):
             self.assertNotRegex(source.read_text(), r'(?m)^import (android|androidx)\.')
 
+    def test_source_dependency_edges(self):
+        # Focused import guard, not a complete architecture proof.
+        for source in (ROOT / 'domain/src/main').rglob('*.kt'):
+            self.assertNotRegex(source.read_text(), r'(?m)^import (android|androidx|com\.pietrondo\.aquariummanager\.(data|presentation))\.')
+        for source in (ROOT / 'data/src/main').rglob('*.kt'):
+            self.assertNotRegex(source.read_text(), r'(?m)^import com\.pietrondo\.aquariummanager\.(presentation|MainActivity|AquariumApplication)')
+        presentation = ROOT / 'app/src/main/kotlin/com/pietrondo/aquariummanager/presentation'
+        self.assertTrue(presentation.is_dir(), 'Presentation boundary is missing')
+        for source in presentation.rglob('*.kt'):
+            self.assertNotRegex(source.read_text(), r'(?m)^import (androidx\.room|com\.pietrondo\.aquariummanager\.data)\.')
+        for source in (ROOT / 'app/src/main').rglob('*.kt'):
+            if source.name != 'AquariumApplication.kt':
+                self.assertNotRegex(source.read_text(), r'(?m)^import (androidx\.room|com\.pietrondo\.aquariummanager\.data)\.')
+
+    def test_real_list_is_wired_without_placeholder_or_seed(self):
+        root = ROOT / 'app/src/main/kotlin/com/pietrondo/aquariummanager'
+        composition = root / 'AquariumApplication.kt'
+        self.assertTrue(composition.is_file(), 'Real Room composition root is missing')
+        self.assertIn('Room.databaseBuilder', composition.read_text())
+        self.assertNotIn('fallbackToDestructiveMigration', composition.read_text())
+        manifest = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
+        self.assertIn('android:name=".AquariumApplication"', manifest)
+        screen = (root / 'presentation/AquariumListScreen.kt').read_text()
+        self.assertIn('collectAsStateWithLifecycle', screen)
+        self.assertNotIn('foundation_message', (root / 'MainActivity.kt').read_text())
+
     def test_app_declares_no_permissions(self):
         self.assertTrue((ROOT / "app/src/main/AndroidManifest.xml").is_file(), "Android app manifest is missing")
         manifest = ET.parse(ROOT / 'app/src/main/AndroidManifest.xml')

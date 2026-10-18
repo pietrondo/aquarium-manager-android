@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">Aquarium Manager</string>
-    <string name="foundation_message">Your aquarium library starts here.</string>
+    <string name="aquariums_title">Aquariums</string>
+    <string name="aquariums_loading">Loading aquariums</string>
+    <string name="aquariums_empty">No aquariums yet.</string>
+    <string name="aquariums_creation_unavailable">Creating aquariums is not available yet.</string>
+    <string name="aquariums_error">Aquariums could not be loaded. Please try again.</string>
+    <string name="retry">Retry</string>
 </resources>

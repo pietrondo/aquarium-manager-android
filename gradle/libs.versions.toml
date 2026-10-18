@@ -3,9 +3,15 @@ agp = "8.11.1"
 kotlin = "2.2.21"
 composeBom = "2025.12.00"
 activity = "1.12.2"
-# Selected for later persistence/automation tasks; deliberately not runtime dependencies yet.
+# WorkManager remains reserved for later automation.
 room = "2.8.5"
 work = "2.11.2"
+ksp = "2.2.21-2.0.4"
+lifecycle = "2.9.4"
+coroutines = "1.10.2"
+robolectric = "4.16.1"
+junit = "4.13.2"
+desugar = "2.1.5"
 
 [libraries]
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
@@ -14,7 +20,17 @@ activity-compose = { module = "androidx.activity:activity-compose", version.ref 
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
+coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+junit = { module = "junit:junit", version.ref = "junit" }
+desugar = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar" }
+
 [plugins]
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
