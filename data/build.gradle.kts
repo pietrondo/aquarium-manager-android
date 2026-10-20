@@ -19,6 +19,7 @@ android {
 }
 kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+tasks.matching { it.name == "kspReleaseKotlin" }.configureEach { mustRunAfter("kspDebugKotlin") }
 dependencies {
     implementation(project(":domain"))
     implementation(libs.room.runtime)

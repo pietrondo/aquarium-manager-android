@@ -44,12 +44,17 @@ class AndroidFoundationTests(unittest.TestCase):
         composition = root / 'AquariumApplication.kt'
         self.assertTrue(composition.is_file(), 'Real Room composition root is missing')
         self.assertIn('Room.databaseBuilder', composition.read_text())
+        self.assertIn('addMigrations(*AquariumDatabase.ALL_MIGRATIONS)', composition.read_text())
         self.assertNotIn('fallbackToDestructiveMigration', composition.read_text())
+        schema_dir = ROOT / 'data/schemas/com.pietrondo.aquariummanager.data.AquariumDatabase'
+        self.assertTrue((schema_dir / '1.json').is_file(), 'Exported Room schema 1.json is missing')
+        self.assertTrue((schema_dir / '2.json').is_file(), 'Exported Room schema 2.json is missing')
         manifest = (ROOT / 'app/src/main/AndroidManifest.xml').read_text()
         self.assertIn('android:name=".AquariumApplication"', manifest)
         screen = (root / 'presentation/AquariumListScreen.kt').read_text()
         self.assertIn('collectAsStateWithLifecycle', screen)
         self.assertNotIn('foundation_message', (root / 'MainActivity.kt').read_text())
+
 
     def test_app_declares_no_permissions(self):
         self.assertTrue((ROOT / "app/src/main/AndroidManifest.xml").is_file(), "Android app manifest is missing")

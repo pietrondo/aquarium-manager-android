@@ -82,3 +82,39 @@ The hosted logs show actual execution of all five Kotlin test tasks: `:domain:te
 This is a fresh-checkout hosted Linux verification, **not a cold-cache claim**: setup-gradle restored the Gradle home/dependency/wrapper cache. All 169 tasks still executed. No application/service credentials or Google API setup were needed. Non-failing Node20/action-generation and setup-java v4 deprecation notices remain future CI maintenance, not an excuse to change the reviewed toolchain during this delivery.
 
 `aq-7zd.2` is closed against this exact hosted result plus fresh source review and the bounded native empty-state rendering audit. Other schema/CRUD/backup/UI/release tasks and the startup-performance follow-up in `aq-ct8.4` remain open. Foundation or other epics are not automatically closed by this slice.
+
+## External catalogs and multi-aquarium CRUD (`aq-7u7.3` & `aq-7u7.4`) — 2026-10-19
+
+Implemented versioned external JSON catalog loading/seeding (`aq-7u7.3`) and multi-aquarium CRUD with overlapping profile labels (`aq-7u7.4`):
+
+- **RED -> GREEN TDD counts**:
+  - `:domain:test`: **14 tests, 3 failed (RED)** in `CatalogAndAquariumDraftTest` -> **14 passed, 0 failed (GREEN)**.
+  - `:data:testDebugUnitTest`: **20 tests, 5 failed (RED)** in `CatalogAndCrudRepositoryTest` -> **20 passed, 0 failed (GREEN)**.
+  - `:app:testDebugUnitTest`: **9 tests, 4 failed (RED)** in `AquariumListViewModelTest` -> **9 passed, 0 failed (GREEN)**.
+- **Full verification**:
+  - `python -m unittest discover -s tests -v`: **16 passed**.
+  - `gradlew.bat --no-daemon test lint assembleDebug`: **BUILD SUCCESSFUL** across `:domain`, `:data` (debug + release unit tests, lint, AAR), and `:app` (debug + release unit tests, lint, `app-debug.apk`), totaling **43 unique Kotlin unit tests (72 variant executions)** with 0 failures.
+
+## Water parameter readings, parameter trends, and maintenance logs (`aq-e7g.1`, `aq-e7g.2`, `aq-e7g.3`) — 2026-10-19
+
+Implemented optional water parameter recording and timestamped history (`aq-e7g.1`), parameter trend calculation and native Compose sparklines with explicit missing-value gaps and non-color direction cues without fabricated safe bands (`aq-e7g.2`), and typed maintenance logging with optional changed water volume and non-blocking advisory warning when changed litres exceed aquarium volume (`aq-e7g.3`):
+
+- **RED -> GREEN TDD counts**:
+  - `:domain:test`: **18 tests, 4 failed (RED)** in `ReadingsTrendsAndMaintenanceDomainTest` -> **18 passed, 0 failed (GREEN)**.
+  - `:data:testDebugUnitTest`: **22 tests, 2 failed (RED)** in `MeasurementsAndMaintenanceRepositoryTest` -> **22 passed, 0 failed (GREEN)**.
+  - `:app:testDebugUnitTest`: **11 tests, 2 failed (RED)** in `AquariumListViewModelTest` -> **11 passed, 0 failed (GREEN)**.
+- **Full verification**:
+  - `python -m unittest discover -s tests -v`: **16 passed**.
+  - `gradlew.bat --no-daemon test lint assembleDebug`: **BUILD SUCCESSFUL** across `:domain`, `:data` (debug + release unit tests, lint, AAR), and `:app` (debug + release unit tests, lint, `app-debug.apk`), totaling **51 unique Kotlin unit tests (84 variant executions)** with 0 failures.
+
+## Livestock and dosing (`aq-adw.1`, `aq-adw.2`, `aq-adw.3`, `aq-adw.4`, `aq-adw.5`) — 2026-10-19
+
+Implemented fauna/flora species catalog editing with case-insensitive duplicate prevention, in-place rename propagation, and referenced-deletion protection (`aq-adw.1`), per-aquarium stock entries with unknown (`null`) vs positive quantities, introduction/exit timestamp validation, active/exited visibility, and 1-tap exit marking (`aq-adw.2`), shared product library and `mL`/`g`/`drops`/`tabs` dose-unit validation without cross-dimension conversion (`aq-adw.3`), daily and weekly dosing recurrence with explicit IANA timezones covering DST transitions, timezone travel, leap dates, and date-window validation (`aq-adw.4`), and transactional immutable dosing snapshots from plans or ad-hoc entries that survive subsequent product renames and plan edits/deletions (`aq-adw.5`):
+
+- **RED -> GREEN TDD counts**:
+  - `:domain:test`: **23 tests, 5 failed (RED)** in `LivestockAndDosingDomainTest` -> **23 passed, 0 failed (GREEN)**.
+  - `:data:testDebugUnitTest`: **25 tests, 3 failed (RED)** in `LivestockAndDosingRepositoryTest` -> **25 passed, 0 failed (GREEN)**.
+  - `:app:testDebugUnitTest`: **13 tests, 2 failed (RED)** in `AquariumListViewModelTest` -> **13 passed, 0 failed (GREEN)**.
+- **Full verification**:
+  - `python -m unittest discover -s tests -v`: **16 passed**.
+  - `gradlew.bat --no-daemon test lint assembleDebug`: **BUILD SUCCESSFUL** across `:domain`, `:data` (debug + release unit tests, lint, AAR), and `:app` (debug + release unit tests, lint, `app-debug.apk`), totaling **61 unique Kotlin unit tests (99 variant executions)** with 0 failures.

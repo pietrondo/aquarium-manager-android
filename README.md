@@ -2,10 +2,11 @@
 
 An offline-first, multi-aquarium manager planned for **native Kotlin + Jetpack Compose + Material 3**, Clean Architecture, MVVM, repositories and Room.
 
-**Current status:** native Compose/Material 3 read-only aquarium list backed by real Room, with lifecycle MVVM and `:app`, `:domain`, `:data` boundaries. A fresh installation correctly shows an empty library: there are no seeded aquariums and no create/edit/delete screens yet. Other domain tables/features, backup, scheduling and final visual design remain future Beads tasks. See the [approved slice](docs/decisions/2026-10-19-room-mvvm-slice.md) and [actual verification evidence](docs/verification.md).
+**Current status:** native Compose/Material 3 multi-aquarium CRUD and overlapping profile management backed by real Room schema v2, versioned external JSON catalog seeding (`default_catalog_v1.json`) that never overwrites user-edited Room records, lifecycle MVVM, and `:app`, `:domain`, `:data` boundaries. See [schema v2 and migrations](docs/decisions/2026-10-19-room-schema-v2-and-migrations.md), the [initial slice](docs/decisions/2026-10-19-room-mvvm-slice.md), and [actual verification evidence](docs/verification.md).
 
 ## Navigation
 
+- [Room schema v2 and non-destructive migrations](docs/decisions/2026-10-19-room-schema-v2-and-migrations.md)
 - [Read-only list and Room core schema](docs/decisions/2026-10-19-room-mvvm-slice.md)
 - [Ordered schema, ERD and full-library backup architecture](docs/decisions/2026-10-18-library-and-backup-design.md)
 - [PixelLab API contract, sizing and verification](docs/assets.md)

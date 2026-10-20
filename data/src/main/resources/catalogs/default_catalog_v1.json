@@ -1,0 +1,116 @@
+{
+  "format": "aquarium-manager-catalog",
+  "version": 1,
+  "profileLabels": [
+    {
+      "id": "00000000-0000-4000-8000-000000000101",
+      "name": "Planted"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000102",
+      "name": "Freshwater Community"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000103",
+      "name": "Shrimp"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000104",
+      "name": "Reef / Marine"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000105",
+      "name": "Quarantine"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000106",
+      "name": "Breeding"
+    }
+  ],
+  "maintenanceTypes": [
+    {
+      "code": "WATER_CHANGE",
+      "label": "Water change"
+    },
+    {
+      "code": "FILTER_CLEANING",
+      "label": "Filter maintenance"
+    },
+    {
+      "code": "GLASS_CLEANING",
+      "label": "Glass cleaning"
+    },
+    {
+      "code": "TRIMMING",
+      "label": "Plant trimming"
+    },
+    {
+      "code": "SUBSTRATE_VACUUM",
+      "label": "Substrate vacuum"
+    },
+    {
+      "code": "EQUIPMENT_CHECK",
+      "label": "Equipment check"
+    }
+  ],
+  "doseUnits": [
+    {
+      "code": "mL",
+      "label": "Millilitres (mL)",
+      "dimension": "VOLUME"
+    },
+    {
+      "code": "g",
+      "label": "Grams (g)",
+      "dimension": "MASS"
+    },
+    {
+      "code": "drops",
+      "label": "Drops",
+      "dimension": "COUNT"
+    },
+    {
+      "code": "tabs",
+      "label": "Tablets / Capsules",
+      "dimension": "COUNT"
+    }
+  ],
+  "species": [
+    {
+      "id": "00000000-0000-4000-8000-000000000201",
+      "kind": "FAUNA",
+      "commonName": "Amano Shrimp",
+      "scientificName": "Caridina multidentata"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000202",
+      "kind": "FAUNA",
+      "commonName": "Cherry Shrimp",
+      "scientificName": "Neocaridina davidi"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000203",
+      "kind": "FAUNA",
+      "commonName": "Neon Tetra",
+      "scientificName": "Paracheirodon innesi"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000204",
+      "kind": "FLORA",
+      "commonName": "Java Fern",
+      "scientificName": "Microsorum pteropus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000205",
+      "kind": "FLORA",
+      "commonName": "Anubias Nana",
+      "scientificName": "Anubias barteri var. nana"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000206",
+      "kind": "FLORA",
+      "commonName": "Amazon Sword",
+      "scientificName": "Echinodorus grisebachii"
+    }
+  ]
+}

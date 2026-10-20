@@ -34,6 +34,7 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel.ktx)
     implementation(libs.coroutines.core)
+    implementation(libs.work.runtime)
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
     coreLibraryDesugaring(libs.desugar)
