@@ -429,6 +429,25 @@ class LibraryBackupRepositoryTest {
     }
 
     @Test
+    fun unsupportedCompressionMethodAndEncryptedEntriesAreRejectedBeforeDbMutation() = runBlocking {
+        populateSampleLibrary()
+        val validZip = repository.exportBackupBytes()
+        val aquariumsBefore = repository.observeAquariumDetails().first()
+
+        val unsupportedMethodZip = patchAllZipEntryHeaders(validZip, compressionMethod = 99)
+        assertThrowsIllegalArgumentSuspend {
+            repository.restoreBackupFromBytes(unsupportedMethodZip, confirmReplace = true)
+        }
+
+        val encryptedZip = patchAllZipEntryHeaders(validZip, encrypted = true)
+        assertThrowsIllegalArgumentSuspend {
+            repository.restoreBackupFromBytes(encryptedZip, confirmReplace = true)
+        }
+
+        assertEquals(aquariumsBefore, repository.observeAquariumDetails().first())
+    }
+
+    @Test
     fun replaceLibrarySemanticRoundTripRollbackOnMidImportFailureAndSafetyBackupEnforcement() = runBlocking {
         populateSampleLibrary()
 
@@ -857,6 +876,41 @@ class LibraryBackupRepositoryTest {
         backupWorkDir = tempWorkDir,
         appVersion = "0.1.0",
     )
+
+    private fun patchAllZipEntryHeaders(
+        zipBytes: ByteArray,
+        compressionMethod: Int? = null,
+        encrypted: Boolean = false,
+    ): ByteArray {
+        val patched = zipBytes.copyOf()
+        var offset = 0
+        while (offset + 10 <= patched.size) {
+            val signature = readIntLe(patched, offset)
+            when (signature) {
+                0x04034b50 -> {
+                    if (encrypted) patched[offset + 6] = (patched[offset + 6].toInt() or 0x01).toByte()
+                    if (compressionMethod != null) writeShortLe(patched, offset + 8, compressionMethod)
+                }
+                0x02014b50 -> {
+                    if (encrypted) patched[offset + 8] = (patched[offset + 8].toInt() or 0x01).toByte()
+                    if (compressionMethod != null) writeShortLe(patched, offset + 10, compressionMethod)
+                }
+            }
+            offset++
+        }
+        return patched
+    }
+
+    private fun readIntLe(bytes: ByteArray, offset: Int): Int =
+        (bytes[offset].toInt() and 0xFF) or
+            ((bytes[offset + 1].toInt() and 0xFF) shl 8) or
+            ((bytes[offset + 2].toInt() and 0xFF) shl 16) or
+            ((bytes[offset + 3].toInt() and 0xFF) shl 24)
+
+    private fun writeShortLe(bytes: ByteArray, offset: Int, value: Int) {
+        bytes[offset] = (value and 0xFF).toByte()
+        bytes[offset + 1] = ((value ushr 8) and 0xFF).toByte()
+    }
 
     private fun buildCustomZip(
         entries: List<Pair<String, ByteArray>>,
