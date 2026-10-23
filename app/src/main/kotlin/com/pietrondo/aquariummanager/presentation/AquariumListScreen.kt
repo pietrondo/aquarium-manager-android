@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -50,6 +52,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -57,6 +60,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pietrondo.aquariummanager.R
@@ -168,31 +172,31 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                     NavigationBarItem(
                         selected = successState.selectedTab == AppTab.AQUARIUMS,
                         onClick = { viewModel.selectTab(AppTab.AQUARIUMS) },
-                        icon = { Text("AQ", fontWeight = FontWeight.Bold) },
+                        icon = { PixelIcon(R.drawable.ic_aquariums) },
                         label = { Text(stringResource(R.string.nav_aquariums)) },
                     )
                     NavigationBarItem(
                         selected = successState.selectedTab == AppTab.TESTS,
                         onClick = { viewModel.selectTab(AppTab.TESTS) },
-                        icon = { Text("pH", fontWeight = FontWeight.Bold) },
+                        icon = { PixelIcon(R.drawable.ic_tests) },
                         label = { Text(stringResource(R.string.nav_tests)) },
                     )
                     NavigationBarItem(
                         selected = successState.selectedTab == AppTab.MAINTENANCE,
                         onClick = { viewModel.selectTab(AppTab.MAINTENANCE) },
-                        icon = { Text("MNT", fontWeight = FontWeight.Bold) },
+                        icon = { PixelIcon(R.drawable.ic_maintenance) },
                         label = { Text(stringResource(R.string.nav_maintenance)) },
                     )
                     NavigationBarItem(
                         selected = successState.selectedTab == AppTab.LIVESTOCK,
                         onClick = { viewModel.selectTab(AppTab.LIVESTOCK) },
-                        icon = { Text("BIO", fontWeight = FontWeight.Bold) },
+                        icon = { PixelIcon(R.drawable.ic_livestock) },
                         label = { Text(stringResource(R.string.nav_livestock)) },
                     )
                     NavigationBarItem(
                         selected = successState.selectedTab == AppTab.SETTINGS,
                         onClick = { viewModel.selectTab(AppTab.SETTINGS) },
-                        icon = { Text("SET", fontWeight = FontWeight.Bold) },
+                        icon = { PixelIcon(R.drawable.ic_settings) },
                         label = { Text(stringResource(R.string.nav_settings)) },
                     )
                 }
@@ -635,6 +639,15 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
 }
 
 @Composable
+private fun PixelIcon(resId: Int, size: Dp = 24.dp) {
+    Image(
+        painter = painterResource(resId),
+        contentDescription = null,
+        modifier = Modifier.size(size),
+    )
+}
+
+@Composable
 private fun AquariumsOverviewTab(
     state: AquariumListState.Success,
     onCreateFirst: () -> Unit,
@@ -646,13 +659,19 @@ private fun AquariumsOverviewTab(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = stringResource(R.string.aquariums_title),
-                modifier = Modifier.semantics { heading() },
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PixelIcon(R.drawable.ic_aquariums, 32.dp)
+                Text(
+                    text = stringResource(R.string.aquariums_title),
+                    modifier = Modifier.semantics { heading() },
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
             Text(
                 text = stringResource(R.string.aquariums_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
@@ -742,13 +761,19 @@ private fun WaterTestsTab(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = stringResource(R.string.tests_title),
-                modifier = Modifier.semantics { heading() },
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PixelIcon(R.drawable.ic_temperature, 32.dp)
+                Text(
+                    text = stringResource(R.string.tests_title),
+                    modifier = Modifier.semantics { heading() },
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
             Text(
                 text = stringResource(R.string.tests_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
@@ -1103,13 +1128,19 @@ private fun MaintenanceTab(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = stringResource(R.string.maintenance_title),
-                modifier = Modifier.semantics { heading() },
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PixelIcon(R.drawable.ic_water_change, 32.dp)
+                Text(
+                    text = stringResource(R.string.maintenance_title),
+                    modifier = Modifier.semantics { heading() },
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
             Text(
                 text = stringResource(R.string.maintenance_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
@@ -1888,13 +1919,19 @@ private fun LivestockAndDosingTab(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = stringResource(R.string.livestock_title),
-                modifier = Modifier.semantics { heading() },
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PixelIcon(R.drawable.ic_livestock, 32.dp)
+                Text(
+                    text = stringResource(R.string.livestock_title),
+                    modifier = Modifier.semantics { heading() },
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
             Text(
                 text = stringResource(R.string.livestock_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
@@ -1927,6 +1964,7 @@ private fun LivestockAndDosingTab(
                 selected = state.livestockSection == LivestockSection.DOSING,
                 onClick = { onSelectSection(LivestockSection.DOSING) },
                 label = { Text(stringResource(R.string.section_dosing)) },
+                leadingIcon = { PixelIcon(R.drawable.ic_dose, 18.dp) },
             )
             FilterChip(
                 selected = state.livestockSection == LivestockSection.SPECIES,
@@ -2124,6 +2162,7 @@ private fun SpeciesKindFilterRow(
             selected = selectedFilter == SpeciesKind.FLORA,
             onClick = { onSelectFilter(SpeciesKind.FLORA) },
             label = { Text(stringResource(R.string.filter_flora)) },
+            leadingIcon = { PixelIcon(R.drawable.ic_plant, 18.dp) },
         )
     }
 }
@@ -2952,13 +2991,19 @@ private fun SettingsAndDisclosuresTab(
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = stringResource(R.string.settings_title),
-                    modifier = Modifier.semantics { heading() },
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PixelIcon(R.drawable.ic_settings, 32.dp)
+                    Text(
+                        text = stringResource(R.string.settings_title),
+                        modifier = Modifier.semantics { heading() },
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 Text(
                     text = stringResource(R.string.settings_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
