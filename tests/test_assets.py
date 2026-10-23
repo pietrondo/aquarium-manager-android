@@ -53,6 +53,10 @@ class AssetTests(unittest.TestCase):
                     self.assertEqual(im.size,(size,size)); self.assertLessEqual(len(im.getcolors()),2)
             for density,size in a.LAUNCHER_SIZES.items():
                 with Image.open(root/'out'/f'mipmap-{density}'/'app_icon.png') as im: self.assertEqual(im.size,(size,size))
+            for density,size in a.ADAPTIVE_CANVAS.items():
+                with Image.open(root/'out'/f'mipmap-{density}'/'app_icon_foreground.png') as im:
+                    self.assertEqual(im.size,(size,size))
+                    self.assertEqual(im.getpixel((0,0))[3],0)
             with Image.open(root/'out'/'store'/'app_icon.png') as im: self.assertEqual(im.size,(512,512))
 
     @unittest.skipUnless(SCRIPT.exists(), 'implementation not yet written')

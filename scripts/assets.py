@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 ENDPOINT = 'https://api.pixellab.ai/v2/create-image-pixflux'
 UI_SIZES = dict(zip(['mdpi','hdpi','xhdpi','xxhdpi','xxxhdpi'], [24,36,48,72,96]))
 LAUNCHER_SIZES = dict(zip(UI_SIZES, [48,72,96,144,192]))
+ADAPTIVE_CANVAS = dict(zip(UI_SIZES, [108,162,216,324,432]))
+ADAPTIVE_ART = dict(zip(UI_SIZES, [48,72,96,144,192]))
 STYLE_PATH = ROOT / 'assets' / 'style.txt'
 
 
@@ -95,6 +97,22 @@ def generate(records, sources, enabled):
         print('saved:', record['name'])
 
 
+def fit(image, size):
+    """Crop transparent padding, then fit the art into a square canvas."""
+    box = image.getchannel('A').getbbox()
+    if box:
+        image = image.crop(box)
+    width, height = image.size
+    scale = min(size/width, size/height)
+    art_width, art_height = max(1, round(width*scale)), max(1, round(height*scale))
+    canvas = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    canvas.alpha_composite(
+        image.resize((art_width, art_height), Image.Resampling.NEAREST),
+        ((size-art_width)//2, (size-art_height)//2),
+    )
+    return canvas
+
+
 def resize(records, sources, output):
     validate(records)
     # Validate the whole batch before producing any resource.
@@ -106,14 +124,26 @@ def resize(records, sources, output):
             images.append((record, image.convert('RGBA')))
     for record, image in images:
         launcher = record['kind'] == 'launcher'
-        base = image if launcher else image.resize((24,24), Image.Resampling.NEAREST)
-        for density, size in (LAUNCHER_SIZES if launcher else UI_SIZES).items():
-            folder = output / (('mipmap-' if launcher else 'drawable-')+density)
-            folder.mkdir(parents=True, exist_ok=True)
-            base.resize((size,size),Image.Resampling.NEAREST).save(folder/(record['name']+'.png'))
         if launcher:
-            folder=output/'store'; folder.mkdir(parents=True,exist_ok=True)
-            image.resize((512,512),Image.Resampling.NEAREST).save(folder/(record['name']+'.png'))
+            for density, size in LAUNCHER_SIZES.items():
+                folder = output / ('mipmap-'+density)
+                folder.mkdir(parents=True, exist_ok=True)
+                fit(image, size).save(folder/(record['name']+'.png'))
+            for density, canvas_size in ADAPTIVE_CANVAS.items():
+                folder = output / ('mipmap-'+density)
+                canvas = Image.new('RGBA', (canvas_size, canvas_size), (0, 0, 0, 0))
+                art = fit(image, ADAPTIVE_ART[density])
+                canvas.alpha_composite(art, ((canvas_size-ADAPTIVE_ART[density])//2,)*2)
+                canvas.save(folder/(record['name']+'_foreground.png'))
+            folder = output/'store'; folder.mkdir(parents=True, exist_ok=True)
+            fit(image, 512).save(folder/(record['name']+'.png'))
+        else:
+            base = fit(image, 24)
+            for density, size in UI_SIZES.items():
+                folder = output / ('drawable-'+density)
+                folder.mkdir(parents=True, exist_ok=True)
+                out = base if size == 24 else base.resize((size, size), Image.Resampling.NEAREST)
+                out.save(folder/(record['name']+'.png'))
 
 
 def main():

@@ -1,8 +1,8 @@
 [
   {"name":"ic_launcher","kind":"launcher","description":"A tiny aquarium with one fish, aquatic plant and waterline; distinctive app symbol"},
-  {"name":"ic_aquariums","kind":"ui","description":"Rectangular aquarium with one fish and waterline"},
+  {"name":"ic_aquariums","kind":"ui","description":"Bold front view of a small aquarium with a thick dark navy frame, teal water, one large orange fish and a single clear waterline; minimal shapes readable at 24 pixels"},
   {"name":"ic_tests","kind":"ui","description":"Single water test vial with aqua liquid"},
-  {"name":"ic_maintenance","kind":"ui","description":"Small cleaning brush with water drop"},
+  {"name":"ic_maintenance","kind":"ui","description":"Vertical cleaning brush centered: long straight dark navy handle on top, rectangular bristle block below with clear teal bristles, thick dark outline, no leaves, no water drop"},
   {"name":"ic_livestock","kind":"ui","description":"One simple fish silhouette"},
   {"name":"ic_settings","kind":"ui","description":"Simple cog with open central hole"},
   {"name":"ic_temperature","kind":"ui","description":"Single thermometer with coral bulb"},

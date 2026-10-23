@@ -663,7 +663,7 @@ private fun AquariumsOverviewTab(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                PixelIcon(R.drawable.ic_aquariums, 32.dp)
+                PixelIcon(R.drawable.ic_aquariums)
                 Text(
                     text = stringResource(R.string.aquariums_title),
                     modifier = Modifier.semantics { heading() },
@@ -765,7 +765,7 @@ private fun WaterTestsTab(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                PixelIcon(R.drawable.ic_temperature, 32.dp)
+                PixelIcon(R.drawable.ic_temperature)
                 Text(
                     text = stringResource(R.string.tests_title),
                     modifier = Modifier.semantics { heading() },
@@ -1132,7 +1132,7 @@ private fun MaintenanceTab(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                PixelIcon(R.drawable.ic_water_change, 32.dp)
+                PixelIcon(R.drawable.ic_water_change)
                 Text(
                     text = stringResource(R.string.maintenance_title),
                     modifier = Modifier.semantics { heading() },
@@ -1923,7 +1923,7 @@ private fun LivestockAndDosingTab(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                PixelIcon(R.drawable.ic_livestock, 32.dp)
+                PixelIcon(R.drawable.ic_livestock)
                 Text(
                     text = stringResource(R.string.livestock_title),
                     modifier = Modifier.semantics { heading() },
@@ -2995,7 +2995,7 @@ private fun SettingsAndDisclosuresTab(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    PixelIcon(R.drawable.ic_settings, 32.dp)
+                    PixelIcon(R.drawable.ic_settings)
                     Text(
                         text = stringResource(R.string.settings_title),
                         modifier = Modifier.semantics { heading() },
