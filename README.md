@@ -2,7 +2,7 @@
 
 An offline-first, multi-aquarium manager planned for **native Kotlin + Jetpack Compose + Material 3**, Clean Architecture, MVVM, repositories and Room.
 
-**Current status:** native Compose/Material 3 multi-aquarium CRUD and overlapping profile management backed by real Room schema v2, versioned external JSON catalog seeding (`default_catalog_v1.json`) that never overwrites user-edited Room records, lifecycle MVVM, and `:app`, `:domain`, `:data` boundaries. See [schema v2 and migrations](docs/decisions/2026-10-19-room-schema-v2-and-migrations.md), the [initial slice](docs/decisions/2026-10-19-room-mvvm-slice.md), and [actual verification evidence](docs/verification.md).
+**Current status:** native Compose/Material 3 multi-aquarium CRUD and overlapping profile management backed by real Room schema v2, versioned external JSON catalog seeding (`default_catalog_v1.json`) that never overwrites user-edited Room records, optional water readings with trends, maintenance history, fauna/flora stock and dosing records, verified full-library ZIP backup/restore with best-effort scheduled backups, lifecycle MVVM, and `:app`, `:domain`, `:data` boundaries. See [schema v2 and migrations](docs/decisions/2026-10-19-room-schema-v2-and-migrations.md), the [initial slice](docs/decisions/2026-10-19-room-mvvm-slice.md), and [actual verification evidence](docs/verification.md).
 
 ## Navigation
 

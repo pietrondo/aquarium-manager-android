@@ -118,3 +118,23 @@ Implemented fauna/flora species catalog editing with case-insensitive duplicate 
 - **Full verification**:
   - `python -m unittest discover -s tests -v`: **16 passed**.
   - `gradlew.bat --no-daemon test lint assembleDebug`: **BUILD SUCCESSFUL** across `:domain`, `:data` (debug + release unit tests, lint, AAR), and `:app` (debug + release unit tests, lint, `app-debug.apk`), totaling **61 unique Kotlin unit tests (99 variant executions)** with 0 failures.
+
+## Safe offline library backups (`aq-d34.1`–`aq-d34.4`) — 2026-10-23
+
+Full-library ZIP backup/restore is implemented in `LibraryBackupCodec`, `RoomAquariumRepository` and `SafBackupDocumentGateway`, with the Compose settings surface wired to SAF create/open/tree pickers:
+
+- **Versioned DTOs and fixtures (`aq-d34.1`)**: exact-key `library.json`/`manifest.json` parsing, canonical UUID/Instant/IANA-zone/`BigDecimal` text, bounded text and row counts, duplicate-ID, duplicate-name, duplicate-link and orphan-FK rejection, unknown maintenance-type/dose-unit/enum rejection plus a `formatVersion = 0` migration fixture. The golden fixture covers all ten tables, nulls and Unicode names, and asserts that device-local `treeUri`/generation markers are never exported.
+- **Verified export (`aq-d34.2`)**: one Room read transaction, codec work on the injected background dispatcher, SHA-256 of the exact `library.json` bytes, local ZIP reopen/verify, and destination readback. A concurrent edit/export test asserts the snapshot stays coherent; failure/corruption tests assert the previous valid destination is untouched.
+- **Hostile parser (`aq-d34.3`)**: allowlist of exactly two entries, traversal/subdirectory/duplicate/extra/missing entry rejection, size and 100:1 expansion ceilings, hash and count mismatch rejection, and — added in this session — explicit rejection of unsupported ZIP compression methods and encrypted entries. Every case asserts the live Room library is unchanged.
+- **Transactional replace (`aq-d34.4`)**: explicit `confirmReplace`, exclusive writer gate, verified safety snapshot written outside the replacement transaction, then all ten tables replaced in one Room `@Transaction`. Tests cover missing confirmation, safety-backup failure aborting before mutation, safety-backup promotion failure leaving the previous safety copy intact, injected mid-import failure rolling back every table, semantic roundtrip hashes, and preservation of device-local schedule settings. A process kill cannot commit a partial replace because the whole replace is one SQLite transaction; no kill-fixture test exists.
+
+Executed on Windows with the existing Temurin 21 runtime and existing SDK 36/build-tools 35.0.0 (`ANDROID_HOME` set for the process only):
+
+| Command | Observed result |
+|---|---|
+| `python -m unittest discover -s tests -v` | **16 passed** |
+| `.\gradlew.bat --no-daemon test lint assembleDebug` | **BUILD SUCCESSFUL in 2m 5s**, **169 actionable tasks (7 executed, 162 up-to-date)**, incremental rather than clean build |
+
+Actual JUnit XML reports: **87 unique Kotlin tests / 142 variant executions**, zero failures, zero errors, zero skipped — `:domain:test` 32, app debug/release 15 each, data debug/release 40 each. Lint: **0 errors / 18 warnings** (dependency-version notices plus `PluralsCandidate` for the retention string, `DataExtractionRules` and `MissingApplicationIcon`); no baseline or suppression was added. Debug APK: **17,128,902 bytes**. `aapt dump permissions` now lists WorkManager's merged `WAKE_LOCK`, `ACCESS_NETWORK_STATE`, `RECEIVE_BOOT_COMPLETED` and `FOREGROUND_SERVICE` permissions plus the app-specific dynamic-receiver permission; **`INTERNET` is still absent**, so the offline/no-account claim holds, but `ACCESS_NETWORK_STATE` should be reflected in future privacy copy.
+
+`aq-d34.1`–`aq-d34.4` are closed against this evidence. `aq-d34.5` stays open because its acceptance requires **instrumented** SAF tests (cancelled picker, revoked grant, unavailable provider, out-of-space, partial write), and this project still has no `androidTest` source or device run. `aq-d34.6` stays open because Doze/delay behavior is owned by WorkManager and has not been exercised on a device; JVM tests do cover repository restart, revoked permission, failed-generation non-retention and app-owned-only pruning. No emulator, instrumented, SAF-provider or device acceptance is claimed here.
