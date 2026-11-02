@@ -2,10 +2,11 @@
 
 An offline-first, multi-aquarium manager planned for **native Kotlin + Jetpack Compose + Material 3**, Clean Architecture, MVVM, repositories and Room.
 
-**Current status:** native Compose/Material 3 multi-aquarium CRUD and overlapping profile management backed by real Room schema v2, versioned external JSON catalog seeding (`default_catalog_v1.json`) that never overwrites user-edited Room records, optional water readings with trends, maintenance history, fauna/flora stock and dosing records, verified full-library ZIP backup/restore with best-effort scheduled backups, lifecycle MVVM, and `:app`, `:domain`, `:data` boundaries. See [schema v2 and migrations](docs/decisions/2026-10-19-room-schema-v2-and-migrations.md), the [initial slice](docs/decisions/2026-10-19-room-mvvm-slice.md), and [actual verification evidence](docs/verification.md).
+**Current status:** native Compose/Material 3 multi-aquarium CRUD and overlapping profile management backed by real Room schema v4, versioned external JSON catalog seeding (`default_catalog_v1.json`) that never overwrites user-edited Room records, optional water readings with trends, maintenance history, fauna/flora stock and dosing records, **NFC tag identification of aquariums**, verified full-library ZIP backup/restore (archive format v2) with best-effort scheduled backups, lifecycle MVVM, and `:app`, `:domain`, `:data` boundaries. See [schema v2 and migrations](docs/decisions/2026-10-19-room-schema-v2-and-migrations.md), [NFC aquarium identification](docs/decisions/2026-11-02-nfc-aquarium-identification.md), the [initial slice](docs/decisions/2026-10-19-room-mvvm-slice.md), and [actual verification evidence](docs/verification.md).
 
 ## Navigation
 
+- [NFC aquarium identification](docs/decisions/2026-11-02-nfc-aquarium-identification.md)
 - [Room schema v2 and non-destructive migrations](docs/decisions/2026-10-19-room-schema-v2-and-migrations.md)
 - [Read-only list and Room core schema](docs/decisions/2026-10-19-room-mvvm-slice.md)
 - [Ordered schema, ERD and full-library backup architecture](docs/decisions/2026-10-18-library-and-backup-design.md)
@@ -16,7 +17,7 @@ An offline-first, multi-aquarium manager planned for **native Kotlin + Jetpack C
 
 ## Product
 
-Manage several aquariums with overlapping profiles, optional water readings, maintenance history, fauna/flora stock and product dosing. Unknown readings/quantities stay unknown, not zero. Dosing events retain a product-name/dose snapshot. Biological guidance is not an arbitrary hardcoded safe-range validator. Content catalogs are external versioned data.
+Manage several aquariums with overlapping profiles, optional water readings, maintenance history, fauna/flora stock and product dosing. Unknown readings/quantities stay unknown, not zero. Dosing events retain a product-name/dose snapshot. Biological guidance is not an arbitrary hardcoded safe-range validator. Content catalogs are external versioned data. Each aquarium can carry a physical NFC sticker (NTAG21x): touching it to the phone selects that aquarium, and the binding is kept in the local database.
 
 Bottom navigation direction: **Aquariums, Tests, Maintenance, Livestock, Settings**. A proposed navy/teal/aqua/coral pixel-art visual direction is represented in the manifest and prompts, not approved final branding. Accessibility labels, non-color status cues, Material touch targets, contrast, scalable text and device-size rendering are required future acceptance criteria.
 

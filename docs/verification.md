@@ -161,3 +161,36 @@ The three observed defects were fixed and `aq-ct8.2` resources were implemented:
 Verification after the fixes: `.\gradlew.bat --no-daemon test lint assembleDebug` → **BUILD SUCCESSFUL in 2m 56s**, **142 test executions**, **0 failures**; Python **16 passed**; lint **0 errors / 18 warnings**. The extra warning is `MonochromeLauncherIcon` on the v26 icon, which is expected because the `<monochrome>` tag is deliberately declared only in the `anydpi-v33` variant; it was not suppressed. Debug APK **17,133,774 bytes**. Clean device screenshot on the same AVD confirms the larger, crisper navigation and header icons and the new adaptive launcher in the system splash. Themed-icon rendering on API 33+ and user visual approval are still not claimed, so `aq-ct8.2` stays open.
 
 Hosted CI [run 39935098960](https://github.com/pietrondo/aquarium-manager-android/actions/runs/39935098960) passed for exact commit `d8c5e2b78fe6dd510e5cc1eb2f811dc0255fd22c` on hosted Ubuntu 24.04; the `verify` job succeeded in 3m 55s with the same Python and Gradle `test lint assembleDebug` steps. Fresh checkout, restored Gradle cache, no device or themed-icon coverage.
+
+## NFC aquarium identification — 2026-11-02
+
+Physical NTAG21x stickers identify an aquarium by their hardware UID. Room schema v4 adds `aquarium_nfc_tags`, the NFC reader mode runs while the app is in the foreground, and touching a bound tag selects its aquarium. See [the design decision](decisions/2026-11-02-nfc-aquarium-identification.md).
+
+The working tree also carried two unfinished streams that made the build red before this change: schema v3 (custom maintenance types — the exported `3.json` and two tests existed, the implementation did not) and the Italian translation (`values-it/strings.xml` with 229 keys against 128 English keys, so lint failed with 101 `ExtraTranslation` errors). Both were completed: v3 implements the `maintenance_types` table and `createMaintenanceType`, and the English base locale now carries the same 229 keys as the Italian one.
+
+### Backup regression found on the device and fixed
+
+The first device run exposed a real defect: the settings screen reported **"Automatic backup failed: Unknown maintenance type code: custom:Catappa"**. The backup validates every maintenance event type against the packaged catalog, which does not contain the user-defined types, so any library using a custom type could not be exported at all — and the same archive could not have been restored on another device.
+
+The fix makes the backup archive self-contained: **format version 2** adds the `maintenanceTypes` table to `library.json` and to the manifest counts, `validateLibrarySnapshot` accepts an event type only when it is either in the packaged catalog or carried by the archive, a custom code may not shadow a packaged code, and `replaceEntireLibrary` replaces the user-defined types with the archived ones. Archives written by earlier versions are migrated (`v0 → v1` and `v1 → v2`: the missing `maintenanceTypes` array and manifest count are added), so old backups still restore. `CustomMaintenanceTypeRepositoryTest.customMaintenanceTypeTravelsWithTheBackupAndSurvivesARestore` is the regression test.
+
+### Executed verification — Windows, JDK 21, SDK 36/build-tools 35.0.0
+
+| Command | Observed result |
+|---|---|
+| `python -m unittest discover -s tests -v` | **16 passed** (asset tooling + architecture/configuration guards) |
+| `.\gradlew.bat --no-daemon test lint assembleDebug` | **BUILD SUCCESSFUL**; lint **0 errors / 123 warnings** (was 101 errors before the base locale was completed) |
+| `.\gradlew.bat --no-daemon :data:connectedDebugAndroidTest` | **BUILD SUCCESSFUL**, `Starting 2 tests on Pixel 10a - 17`, `OK (2 tests)` |
+
+The instrumented run is the **first device test in this project**: `Migration2To3Test.migration2To3KeepsExistingRowsAndAddsMaintenanceTypes` and `Migration3To4Test.migration3To4KeepsExistingRowsAndAddsNfcTags` both pass on a real Pixel 10a (Android 17, API 37). Getting there required real fixes, not just new test files: the data module had no `androidTest` dependencies, no `testInstrumentationRunner` (the default `android.test.InstrumentationTestRunner` crashed the process), and the exported Room schemas were not packaged as test APK assets.
+
+New JVM tests: `NfcTagTest` (domain, tag-id validation), `NfcTagRepositoryTest` (bind, normalize, rebind, unbind, unknown tag, cascade on aquarium delete, and bindings surviving or dropping with a library restore), `AquariumListNfcViewModelTest` (scanning a bound tag selects its aquarium, an unknown tag is reported, the armed assignment binds to the active aquarium, unbinding, tag-id formatting).
+
+### Bounded native smoke on the connected Pixel 10a
+
+The device was reached over Wi-Fi debugging (`adb connect 192.168.1.63:34939`, discovered through `adb mdns services`; the phone is a Pixel 10a, Android 17, with `android.hardware.nfc`). The debug APK was installed over the existing installation. The database on the device was already at schema v3 with a user-defined `custom:Catappa` maintenance type, so the launch exercised the real **v3 → v4 migration on real data**: the pulled database reports `user_version = 4` and contains `aquarium_nfc_tags` and `maintenance_types`, and the pre-existing aquarium row survived.
+
+`dumpsys nfc` records `reader_mode_change{app_info{package_name: "com.pietrondo.aquariummanager"}, flags: 264}` — `FLAG_READER_NFC_V | FLAG_READER_NO_PLATFORM_SOUNDS` — so the reader mode is really active for the app. A screenshot of the Aquariums tab shows the new "Tag NFC" card with the explanation, the "Associa tag NFC" action and the active aquarium, in the Italian locale of the device. No `AndroidRuntime` error was logged for the app.
+
+**Not claimed:** no physical tag was touched during this session, so the end-to-end read of a real sticker is not verified here; the UID decoding is covered by the unit tests and the reader-mode registration by `dumpsys`. Backup behaviour on the device was verified by the failing automatic-backup report that prompted the fix, not by a successful export of the patched build.
+
