@@ -24,13 +24,17 @@ import com.pietrondo.aquariummanager.domain.MaintenanceRecord
 import com.pietrondo.aquariummanager.domain.MaintenanceTypeCatalogItem
 import com.pietrondo.aquariummanager.domain.MeasurementDraft
 import com.pietrondo.aquariummanager.domain.MeasurementRecord
+import com.pietrondo.aquariummanager.domain.NfcTagBinding
 import com.pietrondo.aquariummanager.domain.ProductRecord
 import com.pietrondo.aquariummanager.domain.SpeciesCatalogItem
 import com.pietrondo.aquariummanager.domain.SpeciesDraft
 import com.pietrondo.aquariummanager.domain.SpeciesKind
 import com.pietrondo.aquariummanager.domain.StockEntryDraft
 import com.pietrondo.aquariummanager.domain.StockEntryRecord
+import com.pietrondo.aquariummanager.domain.customMaintenanceTypeCode
 import com.pietrondo.aquariummanager.domain.filterByKind
+import com.pietrondo.aquariummanager.domain.isValidNfcTagId
+import com.pietrondo.aquariummanager.domain.normalizeNfcTagId
 import com.pietrondo.aquariummanager.domain.validateNonBlank
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -106,7 +110,12 @@ class RoomAquariumRepository(
         dao.observeMaintenanceEventsForAquarium(aquariumId).map { rows -> rows.map { it.toDomain() } }
 
     override fun observeMaintenanceTypeCatalog(): Flow<List<MaintenanceTypeCatalogItem>> =
-        maintenanceCatalogFlow.asStateFlow()
+        combine(
+            maintenanceCatalogFlow.asStateFlow(),
+            dao.observeAllMaintenanceTypes(),
+        ) { builtIn, custom ->
+            builtIn + custom.map { MaintenanceTypeCatalogItem(code = it.code, label = it.label) }
+        }
 
     override fun observeSpeciesCatalog(kind: SpeciesKind?): Flow<List<SpeciesCatalogItem>> =
         dao.observeAllSpecies().map { rows ->
@@ -145,6 +154,49 @@ class RoomAquariumRepository(
 
     override fun observeDosingEvents(aquariumId: UUID): Flow<List<DosingEventRecord>> =
         dao.observeDosingEventsForAquarium(aquariumId).map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeNfcTagBindings(): Flow<List<NfcTagBinding>> =
+        dao.observeNfcTagBindings().map { rows -> rows.map { it.toDomain() } }
+
+    override suspend fun bindNfcTag(
+        aquariumId: UUID,
+        tagId: String,
+        label: String?,
+    ): NfcTagBinding = operationMutex.withLock {
+        val entity = AquariumNfcTagEntity(
+            tagId = normalizeNfcTagId(tagId),
+            aquariumId = aquariumId,
+            label = label?.trim()?.takeIf { it.isNotEmpty() },
+            createdAt = clock(),
+        )
+        dao.upsertNfcTag(entity)
+        entity.toDomain()
+    }
+
+    override suspend fun unbindNfcTag(tagId: String) = operationMutex.withLock {
+        dao.deleteNfcTagById(normalizeNfcTagId(tagId))
+    }
+
+    override suspend fun findAquariumIdForNfcTag(tagId: String): UUID? {
+        val normalized = tagId.trim().lowercase()
+        if (!isValidNfcTagId(normalized)) return null
+        return dao.getNfcTagById(normalized)?.aquariumId
+    }
+
+    /** Creates a reusable, user-defined maintenance type shared by every aquarium. */
+    suspend fun createMaintenanceType(label: String): MaintenanceTypeCatalogItem =
+        operationMutex.withLock {
+            val trimmed = label.trim()
+            validateNonBlank(trimmed, "Maintenance type label")
+            val existing = dao.getAllMaintenanceTypes()
+            require(existing.none { it.label.equals(trimmed, ignoreCase = true) }) {
+                "Maintenance type '$trimmed' already exists"
+            }
+            dao.insertMaintenanceTypeIgnore(
+                MaintenanceTypeEntity(code = customMaintenanceTypeCode(trimmed), label = trimmed)
+            )
+            MaintenanceTypeCatalogItem(code = customMaintenanceTypeCode(trimmed), label = trimmed)
+        }
 
     override fun observeBackupScheduleSettings(): Flow<BackupScheduleSettings> = flow {
         ensureScheduleSettingsLoaded()
@@ -981,10 +1033,11 @@ class RoomAquariumRepository(
     private class ScheduleSettingsPersistenceException(message: String, cause: Throwable? = null) :
         IOException(message, cause)
 
-    private fun requireKnownMaintenanceType(code: String) {
+    private suspend fun requireKnownMaintenanceType(code: String) {
         validateNonBlank(code, "Maintenance type code")
-        val knownCodes = maintenanceCatalogFlow.value
-        require(knownCodes.any { it.code == code }) {
+        val known = maintenanceCatalogFlow.value.any { it.code == code } ||
+            dao.getMaintenanceTypeByCode(code) != null
+        require(known) {
             "Unknown maintenance type code: $code"
         }
     }

@@ -19,6 +19,7 @@ import com.pietrondo.aquariummanager.domain.MAX_EXPANSION_RATIO
 import com.pietrondo.aquariummanager.domain.MAX_LIBRARY_BYTES
 import com.pietrondo.aquariummanager.domain.MAX_MANIFEST_BYTES
 import com.pietrondo.aquariummanager.domain.MaintenanceEventSnapshotRecord
+import com.pietrondo.aquariummanager.domain.MaintenanceTypeSnapshotRecord
 import com.pietrondo.aquariummanager.domain.MeasurementSnapshotRecord
 import com.pietrondo.aquariummanager.domain.ProductSnapshotRecord
 import com.pietrondo.aquariummanager.domain.SpeciesKind
@@ -87,6 +88,7 @@ object LibraryBackupCodec {
         "dosingEvents",
         "species",
         "stockEntries",
+        "maintenanceTypes",
     )
 
     private val AQUARIUM_KEYS = setOf("id", "name", "netLitres", "grossLitres", "notes", "createdAt")
@@ -137,6 +139,7 @@ object LibraryBackupCodec {
         "exitedAt",
         "notes",
     )
+    private val MAINTENANCE_TYPE_KEYS = setOf("code", "label")
 
     fun computeSha256Hex(bytes: ByteArray): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
@@ -290,6 +293,16 @@ object LibraryBackupCodec {
         }
         root.put("stockEntries", stockArr)
 
+        val maintenanceTypesArr = JSONArray()
+        for (item in snapshot.maintenanceTypes) {
+            maintenanceTypesArr.put(
+                JSONObject()
+                    .put("code", item.code)
+                    .put("label", item.label)
+            )
+        }
+        root.put("maintenanceTypes", maintenanceTypesArr)
+
         return root.toString(2).toByteArray(Charsets.UTF_8)
     }
 
@@ -305,6 +318,7 @@ object LibraryBackupCodec {
             .put("dosingEvents", manifest.counts.dosingEvents)
             .put("species", manifest.counts.species)
             .put("stockEntries", manifest.counts.stockEntries)
+            .put("maintenanceTypes", manifest.counts.maintenanceTypes)
 
         val root = JSONObject()
             .put("format", manifest.format)
@@ -342,19 +356,26 @@ object LibraryBackupCodec {
         } catch (e: JSONException) {
             throw IllegalArgumentException("Missing or invalid counts object in manifest.json", e)
         }
-        countsObj.requireExactKeys(TABLE_KEYS, "manifest.counts")
+        // Archives written before format v2 have no custom maintenance type count.
+        val migratedCounts = if (!countsObj.has("maintenanceTypes")) {
+            JSONObject(countsObj.toString()).put("maintenanceTypes", 0)
+        } else {
+            countsObj
+        }
+        migratedCounts.requireExactKeys(TABLE_KEYS, "manifest.counts")
 
         val counts = BackupTableCounts(
-            aquariums = countsObj.requireStrictInt("aquariums", "manifest.counts"),
-            aquariumProfiles = countsObj.requireStrictInt("aquariumProfiles", "manifest.counts"),
-            aquariumProfileLinks = countsObj.requireStrictInt("aquariumProfileLinks", "manifest.counts"),
-            measurements = countsObj.requireStrictInt("measurements", "manifest.counts"),
-            maintenanceEvents = countsObj.requireStrictInt("maintenanceEvents", "manifest.counts"),
-            products = countsObj.requireStrictInt("products", "manifest.counts"),
-            dosingPlans = countsObj.requireStrictInt("dosingPlans", "manifest.counts"),
-            dosingEvents = countsObj.requireStrictInt("dosingEvents", "manifest.counts"),
-            species = countsObj.requireStrictInt("species", "manifest.counts"),
-            stockEntries = countsObj.requireStrictInt("stockEntries", "manifest.counts"),
+            aquariums = migratedCounts.requireStrictInt("aquariums", "manifest.counts"),
+            aquariumProfiles = migratedCounts.requireStrictInt("aquariumProfiles", "manifest.counts"),
+            aquariumProfileLinks = migratedCounts.requireStrictInt("aquariumProfileLinks", "manifest.counts"),
+            measurements = migratedCounts.requireStrictInt("measurements", "manifest.counts"),
+            maintenanceEvents = migratedCounts.requireStrictInt("maintenanceEvents", "manifest.counts"),
+            products = migratedCounts.requireStrictInt("products", "manifest.counts"),
+            dosingPlans = migratedCounts.requireStrictInt("dosingPlans", "manifest.counts"),
+            dosingEvents = migratedCounts.requireStrictInt("dosingEvents", "manifest.counts"),
+            species = migratedCounts.requireStrictInt("species", "manifest.counts"),
+            stockEntries = migratedCounts.requireStrictInt("stockEntries", "manifest.counts"),
+            maintenanceTypes = migratedCounts.requireStrictInt("maintenanceTypes", "manifest.counts"),
         )
 
         val manifest = BackupManifest(
@@ -387,10 +408,10 @@ object LibraryBackupCodec {
             throw IllegalArgumentException("Malformed library.json: ${e.message}", e)
         }
 
-        val root = if (formatVersion == 0) {
-            migrateV0LibraryJsonToV1(rawRoot)
-        } else {
-            rawRoot
+        val root = when (formatVersion) {
+            0 -> migrateV1LibraryJsonToV2(migrateV0LibraryJsonToV1(rawRoot))
+            1 -> migrateV1LibraryJsonToV2(rawRoot)
+            else -> rawRoot
         }
 
         root.requireExactKeys(TABLE_KEYS, "library.json")
@@ -551,6 +572,14 @@ object LibraryBackupCodec {
             )
         }
 
+        val maintenanceTypes = root.requireArray("maintenanceTypes").mapObjects("maintenanceTypes") { obj, idx ->
+            obj.requireAllowedKeys(MAINTENANCE_TYPE_KEYS, MAINTENANCE_TYPE_KEYS, "maintenanceTypes[$idx]")
+            MaintenanceTypeSnapshotRecord(
+                code = obj.requireStrictString("code", "maintenanceTypes[$idx]"),
+                label = obj.requireStrictString("label", "maintenanceTypes[$idx]"),
+            )
+        }
+
         val snapshot = LibrarySnapshot(
             aquariums = aquariums,
             aquariumProfiles = profiles,
@@ -562,6 +591,7 @@ object LibraryBackupCodec {
             dosingEvents = dosingEvents,
             species = species,
             stockEntries = stockEntries,
+            maintenanceTypes = maintenanceTypes,
         )
         validateLibrarySnapshot(snapshot, catalog)
         return snapshot
@@ -590,6 +620,15 @@ object LibraryBackupCodec {
                     }
                 }
             }
+        }
+        return migrated
+    }
+
+    /** Format v2 added the user-defined maintenance types; v1 archives have none. */
+    private fun migrateV1LibraryJsonToV2(rawRoot: JSONObject): JSONObject {
+        val migrated = JSONObject(rawRoot.toString())
+        if (!migrated.has("maintenanceTypes")) {
+            migrated.put("maintenanceTypes", JSONArray())
         }
         return migrated
     }

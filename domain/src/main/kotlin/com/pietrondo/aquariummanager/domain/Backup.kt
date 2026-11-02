@@ -9,8 +9,8 @@ import java.time.ZoneId
 import java.util.UUID
 
 const val BACKUP_FORMAT_ID = "aquarium-manager-library"
-const val CURRENT_BACKUP_FORMAT_VERSION = 1
-val SUPPORTED_BACKUP_FORMAT_VERSIONS: Set<Int> = setOf(0, 1)
+const val CURRENT_BACKUP_FORMAT_VERSION = 2
+val SUPPORTED_BACKUP_FORMAT_VERSIONS: Set<Int> = setOf(0, 1, 2)
 
 const val MAX_MANIFEST_BYTES = 64 * 1024
 const val MAX_LIBRARY_BYTES = 50 * 1024 * 1024
@@ -61,10 +61,12 @@ data class BackupTableCounts(
     val dosingEvents: Int = 0,
     val species: Int = 0,
     val stockEntries: Int = 0,
+    val maintenanceTypes: Int = 0,
 ) {
     val totalRows: Long
         get() = listOf(aquariums, aquariumProfiles, aquariumProfileLinks, measurements,
-            maintenanceEvents, products, dosingPlans, dosingEvents, species, stockEntries)
+            maintenanceEvents, products, dosingPlans, dosingEvents, species, stockEntries,
+            maintenanceTypes)
             .sumOf { it.toLong() }
 }
 
@@ -213,6 +215,24 @@ data class StockEntrySnapshotRecord(
     }
 }
 
+/**
+ * A user-defined maintenance type. It travels in the backup so that the maintenance
+ * events referencing it stay valid on another device.
+ */
+data class MaintenanceTypeSnapshotRecord(
+    val code: String,
+    val label: String,
+) {
+    init {
+        require(code.startsWith(CUSTOM_MAINTENANCE_TYPE_PREFIX)) {
+            "Custom maintenance type code must start with $CUSTOM_MAINTENANCE_TYPE_PREFIX: $code"
+        }
+        validateNonBlank(label, "Maintenance type label")
+        requireBoundedLength(code, "Maintenance type code")
+        requireBoundedLength(label, "Maintenance type label")
+    }
+}
+
 data class LibrarySnapshot(
     val aquariums: List<AquariumSnapshotRecord> = emptyList(),
     val aquariumProfiles: List<AquariumProfileSnapshotRecord> = emptyList(),
@@ -224,6 +244,7 @@ data class LibrarySnapshot(
     val dosingEvents: List<DosingEventSnapshotRecord> = emptyList(),
     val species: List<SpeciesSnapshotRecord> = emptyList(),
     val stockEntries: List<StockEntrySnapshotRecord> = emptyList(),
+    val maintenanceTypes: List<MaintenanceTypeSnapshotRecord> = emptyList(),
 ) {
     fun counts(): BackupTableCounts = BackupTableCounts(
         aquariums = aquariums.size,
@@ -236,6 +257,7 @@ data class LibrarySnapshot(
         dosingEvents = dosingEvents.size,
         species = species.size,
         stockEntries = stockEntries.size,
+        maintenanceTypes = maintenanceTypes.size,
     )
 }
 
@@ -302,7 +324,8 @@ fun validateBackupManifest(manifest: BackupManifest) {
             counts.dosingPlans >= 0 &&
             counts.dosingEvents >= 0 &&
             counts.species >= 0 &&
-            counts.stockEntries >= 0
+            counts.stockEntries >= 0 &&
+            counts.maintenanceTypes >= 0
     ) {
         "Backup table counts cannot be negative"
     }
@@ -363,6 +386,16 @@ fun validateLibrarySnapshot(snapshot: LibrarySnapshot, catalog: CatalogBundle) {
     }
 
     val maintenanceIds = mutableSetOf<UUID>()
+    val customTypeCodes = mutableSetOf<String>()
+    val packagedTypeCodes = catalog.maintenanceTypes.mapTo(mutableSetOf()) { it.code }
+    for (type in snapshot.maintenanceTypes) {
+        require(customTypeCodes.add(type.code)) {
+            "Duplicate custom maintenance type code in backup: ${type.code}"
+        }
+        require(type.code !in packagedTypeCodes) {
+            "Custom maintenance type code conflicts with the packaged catalog: ${type.code}"
+        }
+    }
     for (event in snapshot.maintenanceEvents) {
         require(maintenanceIds.add(event.id)) {
             "Duplicate maintenance event ID in backup: ${event.id}"
@@ -370,7 +403,9 @@ fun validateLibrarySnapshot(snapshot: LibrarySnapshot, catalog: CatalogBundle) {
         require(event.aquariumId in aquariumIds) {
             "Orphan aquariumId in maintenance_events: ${event.aquariumId}"
         }
-        catalog.validateMaintenanceTypeCode(event.type)
+        if (event.type !in customTypeCodes) {
+            catalog.validateMaintenanceTypeCode(event.type)
+        }
     }
 
     val productIds = mutableSetOf<UUID>()

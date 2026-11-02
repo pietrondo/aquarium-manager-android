@@ -18,6 +18,7 @@ import com.pietrondo.aquariummanager.domain.MaintenanceRecord
 import com.pietrondo.aquariummanager.domain.MaintenanceTypeCatalogItem
 import com.pietrondo.aquariummanager.domain.MeasurementDraft
 import com.pietrondo.aquariummanager.domain.MeasurementRecord
+import com.pietrondo.aquariummanager.domain.NfcTagBinding
 import com.pietrondo.aquariummanager.domain.ParameterTrendSummary
 import com.pietrondo.aquariummanager.domain.ProductRecord
 import com.pietrondo.aquariummanager.domain.SpeciesCatalogItem
@@ -185,6 +186,9 @@ sealed interface AquariumListState {
         val dosingPlanEditorState: DosingPlanEditorState? = null,
         val adHocDosingEditorState: AdHocDosingEditorState? = null,
         val actionError: String? = null,
+        val nfcTagBindings: List<NfcTagBinding> = emptyList(),
+        val isNfcAssigningTag: Boolean = false,
+        val nfcStatus: NfcStatus? = null,
         val backupScheduleSettings: com.pietrondo.aquariummanager.domain.BackupScheduleSettings =
             com.pietrondo.aquariummanager.domain.BackupScheduleSettings(),
         val restorePreview: com.pietrondo.aquariummanager.domain.BackupRestorePreview? = null,
@@ -208,6 +212,9 @@ sealed interface AquariumListState {
             } else {
                 stockEntries.filter { it.species.kind == selectedSpeciesKindFilter }
             }
+
+        val activeAquariumNfcTags: List<NfcTagBinding>
+            get() = nfcTagBindings.filter { it.aquariumId == activeAquariumId }
     }
     data object Error : AquariumListState
 }
@@ -222,6 +229,7 @@ private data class BaseAquariumSnapshot(
     val backupScheduleSettings: com.pietrondo.aquariummanager.domain.BackupScheduleSettings,
     val selectedAquariumId: UUID?,
     val activeAquariumId: UUID?,
+    val nfcTagBindings: List<NfcTagBinding> = emptyList(),
 )
 
 private data class ActiveAquariumHistories(
@@ -265,8 +273,9 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                         repository.observeAquariumDetails(),
                         repository.observeProfiles(),
                         catalogsFlow,
+                        repository.observeNfcTagBindings(),
                         selectedAquariumIdFlow,
-                    ) { details, profiles, catalogs, requestedSelectedId ->
+                    ) { details, profiles, catalogs, nfcTags, requestedSelectedId ->
                         val validSelectedId = requestedSelectedId?.takeIf { selId ->
                             details.any { it.id == selId }
                         }
@@ -281,6 +290,7 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                             backupScheduleSettings = catalogs.backupScheduleSettings,
                             selectedAquariumId = validSelectedId,
                             activeAquariumId = activeId,
+                            nfcTagBindings = nfcTags,
                         )
                     }.flatMapLatest { base ->
                         val activeId = base.activeAquariumId
@@ -320,6 +330,7 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                         val unmodifiableStockEntries = Collections.unmodifiableList(histories.stockEntries.toList())
                         val unmodifiableDosingPlans = Collections.unmodifiableList(histories.dosingPlans.toList())
                         val unmodifiableDosingEvents = Collections.unmodifiableList(histories.dosingEvents.toList())
+                        val unmodifiableNfcTags = Collections.unmodifiableList(base.nfcTagBindings.toList())
                         val validPendingDelete = previous?.pendingDeleteAquarium?.let { pending ->
                             unmodifiableDetails.firstOrNull { it.id == pending.id }
                         }
@@ -354,6 +365,9 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                             dosingPlanEditorState = previous?.dosingPlanEditorState,
                             adHocDosingEditorState = previous?.adHocDosingEditorState,
                             actionError = previous?.actionError,
+                            nfcTagBindings = unmodifiableNfcTags,
+                            isNfcAssigningTag = previous?.isNfcAssigningTag ?: false,
+                            nfcStatus = previous?.nfcStatus,
                             backupScheduleSettings = base.backupScheduleSettings,
                             restorePreview = previous?.restorePreview,
                             isBackupOperationInProgress = previous?.isBackupOperationInProgress ?: false,
@@ -381,6 +395,86 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
     fun selectAquarium(id: UUID?) {
         selectedAquariumIdFlow.value = id
         updateSuccess { it.copy(selectedAquariumId = id, actionError = null) }
+    }
+
+    /** Arms the reader so the next scanned tag is bound to the active aquarium. */
+    fun startNfcTagAssignment() {
+        updateSuccess {
+            it.copy(isNfcAssigningTag = true, nfcStatus = null, actionError = null)
+        }
+    }
+
+    fun cancelNfcTagAssignment() {
+        updateSuccess { it.copy(isNfcAssigningTag = false) }
+    }
+
+    fun dismissNfcStatus() {
+        updateSuccess { it.copy(nfcStatus = null) }
+    }
+
+    /**
+     * Handles a tag read by the platform reader. While the assignment is armed the tag
+     * is bound to the active aquarium, otherwise it selects the aquarium it belongs to.
+     */
+    fun onNfcTagScanned(tagId: String) {
+        val current = mutableState.value as? AquariumListState.Success ?: return
+        val isAssigning = current.isNfcAssigningTag
+        val targetId = current.activeAquariumId
+        val targetName = current.activeAquarium?.name
+        viewModelScope.launch {
+            try {
+                if (isAssigning) {
+                    if (targetId == null) {
+                        updateSuccess { it.copy(isNfcAssigningTag = false, nfcStatus = NfcStatus.NoAquariumSelected) }
+                        return@launch
+                    }
+                    repository.bindNfcTag(targetId, tagId)
+                    updateSuccess {
+                        it.copy(
+                            isNfcAssigningTag = false,
+                            nfcStatus = NfcStatus.TagBound(
+                                aquariumName = targetName.orEmpty(),
+                                tagId = tagId,
+                            ),
+                        )
+                    }
+                } else {
+                    val aquariumId = repository.findAquariumIdForNfcTag(tagId)
+                    if (aquariumId == null) {
+                        updateSuccess { it.copy(nfcStatus = NfcStatus.UnknownTag(tagId)) }
+                    } else {
+                        val name = current.aquariumDetails
+                            .firstOrNull { it.id == aquariumId }
+                            ?.name
+                            .orEmpty()
+                        selectedAquariumIdFlow.value = aquariumId
+                        updateSuccess {
+                            it.copy(
+                                selectedAquariumId = aquariumId,
+                                nfcStatus = NfcStatus.AquariumSelected(name),
+                            )
+                        }
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                updateSuccess { it.copy(isNfcAssigningTag = false, actionError = e.message) }
+            }
+        }
+    }
+
+    fun unbindNfcTag(tagId: String) {
+        viewModelScope.launch {
+            try {
+                repository.unbindNfcTag(tagId)
+                updateSuccess { it.copy(nfcStatus = NfcStatus.TagUnbound(tagId)) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: Exception) {
+                updateSuccess { it.copy(actionError = e.message) }
+            }
+        }
     }
 
     fun openCreateEditor() {

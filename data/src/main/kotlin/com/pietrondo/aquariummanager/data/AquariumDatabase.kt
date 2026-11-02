@@ -471,6 +471,17 @@ interface AquariumDao {
     @Query("DELETE FROM maintenance_events WHERE aquariumId = :aquariumId")
     suspend fun deleteMaintenanceEventsForAquarium(aquariumId: UUID)
 
+    @Query("SELECT * FROM maintenance_types ORDER BY label ASC, code ASC")
+    fun observeAllMaintenanceTypes(): Flow<List<MaintenanceTypeEntity>>
+    @Query("SELECT * FROM maintenance_types ORDER BY label ASC, code ASC")
+    suspend fun getAllMaintenanceTypes(): List<MaintenanceTypeEntity>
+    @Query("SELECT * FROM maintenance_types WHERE code = :code")
+    suspend fun getMaintenanceTypeByCode(code: String): MaintenanceTypeEntity?
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertMaintenanceTypeIgnore(type: MaintenanceTypeEntity): Long
+    @Query("DELETE FROM maintenance_types WHERE code = :code")
+    suspend fun deleteMaintenanceTypeByCode(code: String)
+
     @Query("SELECT * FROM products ORDER BY name ASC, id ASC")
     fun observeAllProducts(): Flow<List<ProductEntity>>
     @Query("SELECT * FROM products ORDER BY name ASC, id ASC")
@@ -534,6 +545,17 @@ interface AquariumDao {
     suspend fun deleteStockEntryById(id: UUID)
     @Query("DELETE FROM stock_entries WHERE aquariumId = :aquariumId")
     suspend fun deleteStockEntriesForAquarium(aquariumId: UUID)
+
+    @Query("SELECT * FROM aquarium_nfc_tags ORDER BY aquariumId ASC, tagId ASC")
+    fun observeNfcTagBindings(): Flow<List<AquariumNfcTagEntity>>
+    @Query("SELECT * FROM aquarium_nfc_tags WHERE tagId = :tagId")
+    suspend fun getNfcTagById(tagId: String): AquariumNfcTagEntity?
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertNfcTag(tag: AquariumNfcTagEntity)
+    @Query("DELETE FROM aquarium_nfc_tags WHERE tagId = :tagId")
+    suspend fun deleteNfcTagById(tagId: String)
+    @Query("DELETE FROM aquarium_nfc_tags WHERE aquariumId = :aquariumId")
+    suspend fun deleteNfcTagsForAquarium(aquariumId: UUID)
 
     @Transaction
     suspend fun seedCatalogEntities(
@@ -781,6 +803,12 @@ interface AquariumDao {
     @Query("SELECT * FROM stock_entries ORDER BY id ASC")
     suspend fun getAllStockEntriesOrdered(): List<StockEntryEntity>
 
+    @Query("SELECT * FROM aquarium_nfc_tags ORDER BY tagId ASC")
+    suspend fun getAllNfcTagsOrdered(): List<AquariumNfcTagEntity>
+
+    @Query("SELECT * FROM maintenance_types ORDER BY code ASC")
+    suspend fun getAllMaintenanceTypesOrdered(): List<MaintenanceTypeEntity>
+
     @Query("DELETE FROM dosing_events")
     suspend fun deleteAllDosingEvents()
 
@@ -810,6 +838,9 @@ interface AquariumDao {
 
     @Query("DELETE FROM species")
     suspend fun deleteAllSpecies()
+
+    @Query("DELETE FROM maintenance_types")
+    suspend fun deleteAllMaintenanceTypes()
 
     @Transaction
     suspend fun readFullLibrarySnapshot(): com.pietrondo.aquariummanager.domain.LibrarySnapshot {
@@ -920,6 +951,12 @@ interface AquariumDao {
             dosingEvents = dosingEvents,
             species = species,
             stockEntries = stockEntries,
+            maintenanceTypes = getAllMaintenanceTypesOrdered().map {
+                com.pietrondo.aquariummanager.domain.MaintenanceTypeSnapshotRecord(
+                    code = it.code,
+                    label = it.label,
+                )
+            },
         )
     }
 
@@ -929,6 +966,8 @@ interface AquariumDao {
         afterClearHook: (() -> Unit)? = null,
     ) {
         // Delete existing rows in child-to-parent FK-safe order
+        // Tag bindings are read first: deleting the aquariums cascades them away.
+        val preservedNfcTags = getAllNfcTagsOrdered()
         deleteAllDosingEvents()
         deleteAllDosingPlans()
         deleteAllMeasurements()
@@ -939,6 +978,7 @@ interface AquariumDao {
         deleteAllProfiles()
         deleteAllProducts()
         deleteAllSpecies()
+        deleteAllMaintenanceTypes()
 
         afterClearHook?.invoke()
 
@@ -987,6 +1027,11 @@ interface AquariumDao {
                     scientificName = item.scientificName,
                     commonName = item.commonName,
                 )
+            )
+        }
+        for (item in snapshot.maintenanceTypes) {
+            insertMaintenanceTypeIgnore(
+                MaintenanceTypeEntity(code = item.code, label = item.label)
             )
         }
         for (item in snapshot.measurements) {
@@ -1059,6 +1104,13 @@ interface AquariumDao {
                 )
             )
         }
+        // Re-link the tags of the aquariums that came back from the archive.
+        val restoredAquariumIds = snapshot.aquariums.map { it.id }.toSet()
+        for (tag in preservedNfcTags) {
+            if (tag.aquariumId in restoredAquariumIds) {
+                upsertNfcTag(tag)
+            }
+        }
     }
 }
 
@@ -1074,8 +1126,10 @@ interface AquariumDao {
         DosingEventEntity::class,
         SpeciesEntity::class,
         StockEntryEntity::class,
+        MaintenanceTypeEntity::class,
+        AquariumNfcTagEntity::class,
     ],
-    version = 2,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(AquariumConverters::class)
@@ -1156,6 +1210,23 @@ abstract class AquariumDatabase : RoomDatabase() {
                 )
             }
         }
-        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `maintenance_types` (`code` TEXT NOT NULL, `label` TEXT NOT NULL, PRIMARY KEY(`code`))"
+                )
+            }
+        }
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `aquarium_nfc_tags` (`tagId` TEXT NOT NULL, `aquariumId` TEXT NOT NULL, `label` TEXT, `createdAt` TEXT NOT NULL, PRIMARY KEY(`tagId`), FOREIGN KEY(`aquariumId`) REFERENCES `aquariums`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_aquarium_nfc_tags_aquariumId` ON `aquarium_nfc_tags` (`aquariumId`)"
+                )
+            }
+        }
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
     }
 }

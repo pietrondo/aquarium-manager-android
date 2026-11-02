@@ -23,3 +23,7 @@ generated/
 **/build/
 .idea/
 *.iml
+
+# Local agent tooling output
+.agents/
+.codegraph/

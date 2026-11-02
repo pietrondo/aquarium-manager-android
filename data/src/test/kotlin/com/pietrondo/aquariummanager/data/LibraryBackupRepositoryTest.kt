@@ -254,9 +254,9 @@ class LibraryBackupRepositoryTest {
             LibraryBackupCodec.parseLibraryJson(pollutedJson, 1, catalog)
         }
 
-        // Reject future formatVersion = 2 in manifest JSON
+        // Reject future formatVersion = 3 in manifest JSON
         val futureManifestBytes = JSONObject(manifestBytes.toString(Charsets.UTF_8)).apply {
-            put("formatVersion", 2)
+            put("formatVersion", 3)
         }.toString().toByteArray(Charsets.UTF_8)
         assertThrowsIllegalArgument {
             LibraryBackupCodec.parseManifestJson(futureManifestBytes)
@@ -270,7 +270,7 @@ class LibraryBackupRepositoryTest {
         val exportUri = "content://fake/manual/backup-1.zip"
         val result = repository.exportBackupToUri(exportUri)
         assertEquals(exportUri, result.destinationUri)
-        assertEquals(1, result.manifest.formatVersion)
+        assertEquals(2, result.manifest.formatVersion)
         assertTrue(fakeGateway.exists(exportUri))
 
         val preview = repository.inspectBackupUri(exportUri)

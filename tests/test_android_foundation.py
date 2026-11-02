@@ -56,10 +56,19 @@ class AndroidFoundationTests(unittest.TestCase):
         self.assertNotIn('foundation_message', (root / 'MainActivity.kt').read_text())
 
 
-    def test_app_declares_no_permissions(self):
+    def test_app_declares_only_the_nfc_permission(self):
         self.assertTrue((ROOT / "app/src/main/AndroidManifest.xml").is_file(), "Android app manifest is missing")
         manifest = ET.parse(ROOT / 'app/src/main/AndroidManifest.xml')
-        self.assertEqual([], manifest.findall('uses-permission'))
+        android_name = '{http://schemas.android.com/apk/res/android}name'
+        permissions = {node.get(android_name) for node in manifest.findall('uses-permission')}
+        # NFC is the only permission: the app stays offline and has no network access.
+        self.assertEqual({'android.permission.NFC'}, permissions)
+        features = {node.get(android_name) for node in manifest.findall('uses-feature')}
+        self.assertIn('android.hardware.nfc', features)
+        # The app must still install on devices without NFC hardware.
+        for node in manifest.findall('uses-feature'):
+            if node.get(android_name) == 'android.hardware.nfc':
+                self.assertEqual('false', node.get('{http://schemas.android.com/apk/res/android}required'))
 
     def test_gradle_action_uses_verified_commit_not_annotated_tag(self):
         workflow = (ROOT / '.github/workflows/android.yml').read_text(encoding='utf-8')

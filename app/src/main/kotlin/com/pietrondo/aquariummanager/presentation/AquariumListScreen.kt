@@ -43,7 +43,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -62,8 +65,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pietrondo.aquariummanager.R
+import com.pietrondo.aquariummanager.nfc.NfcTagReader
 import com.pietrondo.aquariummanager.domain.APACHE_LICENSE_AND_NOTICES_TEXT
 import com.pietrondo.aquariummanager.domain.AquariumDetail
 import com.pietrondo.aquariummanager.domain.AquariumProfile
@@ -86,6 +92,7 @@ import com.pietrondo.aquariummanager.domain.StockEntryRecord
 import com.pietrondo.aquariummanager.domain.UNENCRYPTED_BACKUP_DISCLOSURE
 import com.pietrondo.aquariummanager.domain.WaterParameter
 import java.math.BigDecimal
+import java.net.URLDecoder
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.ZoneOffset
@@ -133,6 +140,22 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val successState = state as? AquariumListState.Success
     val context = LocalContext.current
+
+    val nfcActivity = remember(context) { NfcTagReader.activityFrom(context) }
+    val isNfcAvailable = remember(context) { NfcTagReader.isSupported(context) }
+    val isNfcEnabled = remember { mutableStateOf(false) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        isNfcEnabled.value = NfcTagReader.isEnabled(context)
+    }
+    DisposableEffect(nfcActivity) {
+        if (nfcActivity == null) {
+            onDispose { }
+        } else {
+            val reader = NfcTagReader(nfcActivity)
+            reader.start { tagId -> viewModel.onNfcTagScanned(tagId) }
+            onDispose { reader.stop() }
+        }
+    }
 
     val exportBackupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/zip"),
@@ -415,6 +438,12 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                                     viewModel.selectAquarium(id)
                                     viewModel.selectTab(AppTab.MAINTENANCE)
                                 },
+                                isNfcAvailable = isNfcAvailable,
+                                isNfcEnabled = isNfcEnabled.value,
+                                onAssignNfcTag = viewModel::startNfcTagAssignment,
+                                onCancelNfcAssignment = viewModel::cancelNfcTagAssignment,
+                                onUnbindNfcTag = viewModel::unbindNfcTag,
+                                onDismissNfcStatus = viewModel::dismissNfcStatus,
                             )
                         }
 
@@ -656,6 +685,12 @@ private fun AquariumsOverviewTab(
     onDeleteAquarium: (UUID) -> Unit,
     onOpenWaterTests: (UUID) -> Unit,
     onOpenMaintenance: (UUID) -> Unit,
+    isNfcAvailable: Boolean,
+    isNfcEnabled: Boolean,
+    onAssignNfcTag: () -> Unit,
+    onCancelNfcAssignment: () -> Unit,
+    onUnbindNfcTag: (String) -> Unit,
+    onDismissNfcStatus: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -682,6 +717,15 @@ private fun AquariumsOverviewTab(
         if (state.aquariumDetails.isEmpty()) {
             EmptyAquariumCard(onCreateFirst = onCreateFirst)
         } else {
+            NfcTagCard(
+                state = state,
+                isNfcAvailable = isNfcAvailable,
+                isNfcEnabled = isNfcEnabled,
+                onAssignTag = onAssignNfcTag,
+                onCancelAssignment = onCancelNfcAssignment,
+                onUnbindTag = onUnbindNfcTag,
+                onDismissStatus = onDismissNfcStatus,
+            )
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -2974,6 +3018,21 @@ private fun AdHocDosingEditorDialog(
     )
 }
 
+/**
+ * Turns a SAF tree URI into the folder name the user recognises, so the settings screen
+ * does not show the raw `content://…/tree/primary%3ADocuments` identifier.
+ */
+fun backupFolderName(treeUri: String): String {
+    val raw = treeUri.substringAfterLast('/')
+    val decoded = try {
+        URLDecoder.decode(raw.replace("+", "%2B"), "UTF-8")
+    } catch (_: IllegalArgumentException) {
+        raw
+    }
+    return decoded.substringAfterLast(':').ifEmpty { treeUri }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SettingsAndDisclosuresTab(
     state: AquariumListState.Success,
@@ -2985,6 +3044,7 @@ private fun SettingsAndDisclosuresTab(
     onOpenLicenseDialog: () -> Unit,
 ) {
     val schedule = state.backupScheduleSettings
+    val treeUri = schedule.treeUri
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -3104,25 +3164,32 @@ private fun SettingsAndDisclosuresTab(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        text = "Folder: ${schedule.treeUri ?: "Not configured"}",
+                        text = if (treeUri != null) {
+                            stringResource(
+                                R.string.backup_folder_label,
+                                backupFolderName(treeUri),
+                            )
+                        } else {
+                            stringResource(R.string.backup_folder_not_configured)
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace,
                     )
                     schedule.lastBackupAt?.let { lastOk ->
                         Text(
-                            text = "Last verified backup: $lastOk",
+                            text = stringResource(R.string.backup_last_verified, lastOk),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.secondary,
                         )
                     }
                     schedule.lastBackupStatus?.let { statusText ->
                         Text(
-                            text = "Status: $statusText",
+                            text = stringResource(R.string.backup_status_label, statusText),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
@@ -3132,7 +3199,7 @@ private fun SettingsAndDisclosuresTab(
                         ) {
                             Text(stringResource(R.string.backup_select_folder_action))
                         }
-                        if (schedule.treeUri != null) {
+                        if (treeUri != null) {
                             Button(
                                 onClick = onRunAutoBackupNowClick,
                                 enabled = !state.isBackupOperationInProgress,

@@ -36,6 +36,12 @@ data class MaintenanceTypeCatalogItem(
     }
 }
 
+const val CUSTOM_MAINTENANCE_TYPE_PREFIX = "custom:"
+
+/** Stable catalog code for a user-defined maintenance type. */
+fun customMaintenanceTypeCode(label: String): String =
+    CUSTOM_MAINTENANCE_TYPE_PREFIX + label.trim()
+
 data class DoseUnitCatalogItem(
     val code: String,
     val label: String,
@@ -357,7 +363,7 @@ fun evaluateMaintenanceVolumeWarning(
     return null
 }
 
-interface AquariumRepository {
+interface AquariumRepository : NfcTagRepository {
     fun observeAquariums(): Flow<List<AquariumSummary>>
 
     fun observeAquariumDetails(): Flow<List<AquariumDetail>> =

@@ -9,7 +9,14 @@ android {
     namespace = "com.pietrondo.aquariummanager.data"
     compileSdk = 36
     buildToolsVersion = "35.0.0"
-    defaultConfig { minSdk = 23 }
+    defaultConfig {
+        minSdk = 23
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    sourceSets {
+        // MigrationTestHelper reads the exported Room schemas from the test APK assets.
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
     testOptions { unitTests.isIncludeAndroidResources = true }
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
@@ -29,4 +36,8 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.robolectric)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.room.testing)
 }

@@ -165,9 +165,9 @@ class BackupDomainTest {
         // Legacy formatVersion 0 is supported via migrator
         validateBackupManifest(base.copy(formatVersion = 0))
 
-        // Reject future formatVersion = 2
+        // Reject future formatVersion = 3
         assertThrowsIllegalArgument {
-            validateBackupManifest(base.copy(formatVersion = 2))
+            validateBackupManifest(base.copy(formatVersion = 3))
         }
         // Reject negative formatVersion = -1
         assertThrowsIllegalArgument {
