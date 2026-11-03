@@ -223,8 +223,9 @@ The SAF failure modes that only a device can show (unavailable provider, revoked
 
 Actual JUnit XML reports: **190 variant executions / 113 unique Kotlin tests**, zero failures, errors or skips — domain 36 once, app 24 twice, data 53 twice. Lint: **0 errors / 119 warnings** (no new warning class, no baseline or suppression). Debug APK: **13,828,558 bytes**.
 
-The instrumented run is the second device test batch of this project and covers the five scenarios the bead required:
+Hosted CI [run 41611111026](https://github.com/pietrondo/aquarium-manager-android/actions/runs/41611111026) passed for exact commit `0e72c94` on hosted Ubuntu 24.04: the `verify` job succeeded in **4m 10s** with the same Python and Gradle `test lint assembleDebug` steps. Fresh checkout, restored Gradle cache, no device or SAF-provider coverage in CI.
 
+The instrumented run is the second device test batch of this project and covers the five scenarios the bead required:
 - `exportFailsAndKeepsTheLastValidBackupWhenTheProviderMisbehaves` — for an unavailable provider, a revoked grant, an out-of-space provider and a provider that stores only a prefix, the export fails, the previously verified archive keeps its exact bytes and stays parseable, and the Room library is unchanged.
 - `exportRefusesToReplaceAnExistingValidBackup` — a second export to the same document is rejected with `BackupDestinationOccupiedException` and the first archive is byte-identical afterwards.
 - `restoreFromARevokedDocumentFailsAndLeavesTheLibraryUnchanged` — a revoked source document cannot replace the live library; the tank count is unchanged and the archive is still restorable once the grant returns.
