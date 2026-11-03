@@ -1656,7 +1656,9 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
         }
     }
 
-    fun exportBackupToUri(destinationUri: String) {
+    fun exportBackupToUri(destinationUri: String?) {
+        // A null destination means the user cancelled the document picker: nothing to export.
+        if (destinationUri == null) return
         val current = mutableState.value as? AquariumListState.Success ?: return
         if (current.isBackupOperationInProgress) return
         updateSuccess {

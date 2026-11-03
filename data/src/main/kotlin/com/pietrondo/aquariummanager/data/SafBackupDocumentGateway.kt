@@ -6,6 +6,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import com.pietrondo.aquariummanager.domain.BackupDocumentGateway
 import com.pietrondo.aquariummanager.domain.BackupDocumentDeleteResult
+import com.pietrondo.aquariummanager.domain.BackupDestinationOccupiedException
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.InputStream
@@ -20,14 +21,21 @@ class SafBackupDocumentGateway(
         if (mode == null) context.contentResolver.openOutputStream(uri)
         else context.contentResolver.openOutputStream(uri, mode)
     }
+    internal var documentDeleter: (Uri) -> Boolean = { uri ->
+        DocumentsContract.deleteDocument(context.contentResolver, uri)
+    }
 
     internal constructor(
         context: Context,
         inputStreamOpener: (Uri) -> InputStream?,
         outputStreamOpener: (Uri, String?) -> java.io.OutputStream?,
+        documentDeleter: (Uri) -> Boolean = { uri ->
+            DocumentsContract.deleteDocument(context.contentResolver, uri)
+        },
     ) : this(context) {
         this.inputStreamOpener = inputStreamOpener
         this.outputStreamOpener = outputStreamOpener
+        this.documentDeleter = documentDeleter
     }
 
     override suspend fun writeDocument(destinationUri: String, bytes: ByteArray) =
@@ -37,7 +45,7 @@ class SafBackupDocumentGateway(
                 ?: throw IOException("Cannot safely verify backup destination; choose a new file")
             val hasExistingContent = existingContent.use { it.read() != -1 }
             if (hasExistingContent) {
-                throw IOException(
+                throw BackupDestinationOccupiedException(
                     "This document provider cannot atomically replace an existing backup. Choose a new file.",
                 )
             }
@@ -45,9 +53,15 @@ class SafBackupDocumentGateway(
             val stream = outputStreamOpener(uri, "wt")
                 ?: outputStreamOpener(uri, null)
                 ?: throw IOException("Could not open output stream for backup destination")
-            stream.use { out ->
-                out.write(bytes)
-                out.flush()
+            try {
+                stream.use { out ->
+                    out.write(bytes)
+                    out.flush()
+                }
+            } catch (failure: Exception) {
+                // The document now holds an incomplete archive: remove it best-effort.
+                deleteDocumentBestEffort(uri.toString())
+                throw failure
             }
         }
 
@@ -62,8 +76,7 @@ class SafBackupDocumentGateway(
     override suspend fun deleteDocumentBestEffort(documentUri: String): Boolean =
         withContext(Dispatchers.IO) {
             try {
-                val uri = Uri.parse(documentUri)
-                DocumentsContract.deleteDocument(context.contentResolver, uri)
+                documentDeleter(Uri.parse(documentUri))
             } catch (_: Exception) {
                 false
             }
@@ -73,7 +86,7 @@ class SafBackupDocumentGateway(
         withContext(Dispatchers.IO) {
             val uri = Uri.parse(documentUri)
             try {
-                if (DocumentsContract.deleteDocument(context.contentResolver, uri)) {
+                if (documentDeleter(uri)) {
                     BackupDocumentDeleteResult.DELETED
                 } else {
                     val cursor = context.contentResolver.query(

@@ -536,7 +536,7 @@ class RoomAquariumRepository(
         operationMutex.withLock {
             val gateway = requireDocumentGateway()
             val (zipBytes, manifest) = buildVerifiedCurrentSnapshotZip()
-            writeAndReadBackVerifyDestination(gateway, destinationUri, zipBytes, manifest, deleteOnFailure = false)
+            writeAndReadBackVerifyDestination(gateway, destinationUri, zipBytes, manifest)
             BackupExportResult(destinationUri = destinationUri, manifest = manifest)
         }
 
@@ -806,7 +806,7 @@ class RoomAquariumRepository(
                 throw failure
             }
             current = markedPending
-            writeAndReadBackVerifyDestination(gateway, newDocUri, zipBytes, manifest, deleteOnFailure = false)
+            writeAndReadBackVerifyDestination(gateway, newDocUri, zipBytes, manifest)
             createdDocVerified = true
 
             val allVerified = current.verifiedAutoGenerations + newDocUri
@@ -839,7 +839,9 @@ class RoomAquariumRepository(
             updated
         } catch (cancelled: CancellationException) {
             val uri = createdDocUri
-            if (uri != null && !createdDocVerified && !gateway.deleteDocumentBestEffort(uri)) {
+            if (uri != null && !createdDocVerified &&
+                gateway.deleteDocumentResult(uri) == BackupDocumentDeleteResult.FAILED
+            ) {
                 persistScheduleSettings(
                     current.copy(pendingCleanupUris = (current.pendingCleanupUris + uri).distinct()),
                 )
@@ -849,7 +851,8 @@ class RoomAquariumRepository(
             throw e
         } catch (e: Exception) {
             val uri = createdDocUri
-            val cleanupPending = uri != null && !createdDocVerified && !gateway.deleteDocumentBestEffort(uri)
+            val cleanupPending = uri != null && !createdDocVerified &&
+                gateway.deleteDocumentResult(uri) == BackupDocumentDeleteResult.FAILED
             val updated = current.copy(
                 pendingCleanupUris = if (cleanupPending) (current.pendingCleanupUris + uri!!).distinct()
                 else current.pendingCleanupUris,
@@ -935,7 +938,6 @@ class RoomAquariumRepository(
         destinationUri: String,
         zipBytes: ByteArray,
         expectedManifest: BackupManifest,
-        deleteOnFailure: Boolean,
     ) {
         try {
             gateway.writeDocument(destinationUri, zipBytes)
@@ -950,10 +952,11 @@ class RoomAquariumRepository(
                 throw IOException("Destination readback verification mismatch for $destinationUri")
             }
         } catch (cancelled: CancellationException) {
-            if (deleteOnFailure) gateway.deleteDocumentBestEffort(destinationUri)
             throw cancelled
         } catch (e: Exception) {
-            if (deleteOnFailure) gateway.deleteDocumentBestEffort(destinationUri)
+            // A failed destination is not deleted here: the gateway removes the incomplete
+            // document it wrote into itself, and it refuses to replace a document that already
+            // holds data, so the last valid backup is never destroyed.
             if (e is IOException) throw e
             throw IOException("Backup destination verification failed: ${e.message}", e)
         }

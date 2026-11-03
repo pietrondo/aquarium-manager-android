@@ -1,5 +1,6 @@
 package com.pietrondo.aquariummanager.domain
 
+import java.io.IOException
 import java.io.InputStream
 import java.math.BigDecimal
 import java.time.DayOfWeek
@@ -303,6 +304,12 @@ interface BackupDocumentGateway {
 }
 
 enum class BackupDocumentDeleteResult { DELETED, NOT_FOUND, FAILED }
+
+/**
+ * The chosen destination already holds data. SAF providers cannot atomically replace an
+ * existing document, so the app refuses instead of destroying the last valid backup.
+ */
+class BackupDestinationOccupiedException(message: String) : IOException(message)
 
 fun validateBackupManifest(manifest: BackupManifest) {
     require(manifest.format == BACKUP_FORMAT_ID) {

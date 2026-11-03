@@ -761,6 +761,28 @@ class AquariumListViewModelTest {
     }
 
     @Test
+    fun cancelledDocumentPickerDoesNotExportOrChangeState() = runTest {
+        val repo = fakeCrudRepository()
+        val vm = AquariumListViewModel(repo).also { store.put("cancelledPicker", it) }
+        runCurrent()
+
+        vm.selectTab(AppTab.SETTINGS)
+        val before = vm.state.value as AquariumListState.Success
+
+        // A cancelled SAF picker returns no destination: no export, no error, no status change.
+        vm.exportBackupToUri(null)
+        runCurrent()
+
+        val after = vm.state.value as AquariumListState.Success
+        assertNull(after.backupStatusMessage)
+        assertNull(after.actionError)
+        assertNull(after.restorePreview)
+        assertFalse(after.isBackupOperationInProgress)
+        assertEquals(before.backupStatusMessage, after.backupStatusMessage)
+        assertEquals(before.actionError, after.actionError)
+    }
+
+    @Test
     fun settingsTabAutoBackupFolderSelectionToggleRunNowAndLicenseDialog() = runTest {
         val repo = fakeCrudRepository()
         val vm = AquariumListViewModel(repo).also { store.put("settingsAuto", it) }

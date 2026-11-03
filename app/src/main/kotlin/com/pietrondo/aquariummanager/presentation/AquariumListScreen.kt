@@ -160,9 +160,7 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
     val exportBackupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/zip"),
     ) { uri ->
-        if (uri != null) {
-            viewModel.exportBackupToUri(uri.toString())
-        }
+        viewModel.exportBackupToUri(uri?.toString())
     }
 
     val inspectBackupLauncher = rememberLauncherForActivityResult(
