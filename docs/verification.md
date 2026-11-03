@@ -236,4 +236,17 @@ The first device run of this batch reported `Failed to receive the UTP test resu
 
 **Not claimed:** the fake provider emulates provider failures, it is not a cloud-backed provider; no real user document was touched; Doze/delayed scheduling behaviour is still unverified (`aq-d34.6` stays open), as are themed icons, accessibility and release acceptance (`aq-ct8.2`–`aq-ct8.4`).
 
+## Scheduled automatic backup on the device (`aq-d34.6`, partial) — 2026-11-03
+
+The same Pixel 10a (Android 17) already carried the folder selected in the previous session, so the scheduled path could be observed without touching the app.
+
+- The daily periodic work is registered as `JOB androidx.work.systemjobscheduler:u0a387/3 #AutoBackupWorker#…` in `dumpsys jobscheduler`, with the WorkManager `SystemJobService` bound to the app and the next window reported as `Delay=+7h5m34s`.
+- **The job ran unattended**: the persisted `backup_schedule_settings.json` records `lastBackupAt 2026-11-03T08:41:00.730Z` and `lastBackupStatus "Verified automatic backup saved (17 records)"`, and the folder `content://com.android.externalstorage.documents/tree/primary%3ADocuments` received `aquarium-auto-backup-1793695260730-d3998681.zip` (1,222 bytes) at 09:41 device time. The settings screen showed the same values: "Cartella: Documents", "Ultimo backup verificato: 2026-11-03T08:41:00.730Z", "Stato: Verified automatic backup saved (17 records)".
+- The "Esegui backup ora" action produced a second verified generation; the persisted `verifiedAutoGenerations` grew to two entries and a second file appeared in the same folder.
+- A manual archive copied into the same folder (`aquarium-manual-backup.zip`) was left untouched by both runs, matching the promise shown in the UI ("i file manuali e i documenti utente non vengono mai toccati").
+
+**Still open on the device:** the seven-generation retention pruning (it needs eight generations) and the revoked-grant pause. The phone dropped off the Wi-Fi network at the end of the session, so the run stopped there; the persisted settings, the two generations and the manual test file are still on the device. The manual test file `aquarium-manual-backup.zip` is a leftover of this check and should be deleted from the phone's `Documents` folder.
+
+Forcing the periodic job from the shell is not possible: `cmd jobscheduler run` looks the job up by the app package as namespace, while WorkManager registers it under `androidx.work.systemjobscheduler`, so the command reports "Could not find job 3 in package com.pietrondo.aquariummanager". Doze deferral is owned by WorkManager and the design promises a best-effort daily backup, never exact-clock execution.
+
 
