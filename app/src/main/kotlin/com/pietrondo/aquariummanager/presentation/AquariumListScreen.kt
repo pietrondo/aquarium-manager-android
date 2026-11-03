@@ -3303,6 +3303,7 @@ private fun RestoreBackupPreviewDialog(
                         appendLine("Target profiles: ${counts.aquariumProfiles} (links: ${counts.aquariumProfileLinks})")
                         appendLine("Measurements: ${counts.measurements}")
                         appendLine("Maintenance events: ${counts.maintenanceEvents}")
+                        appendLine("Custom maintenance types: ${counts.maintenanceTypes}")
                         appendLine("Species catalog: ${counts.species}")
                         appendLine("Stock entries: ${counts.stockEntries}")
                         appendLine("Products: ${counts.products}")

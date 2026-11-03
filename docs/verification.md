@@ -192,5 +192,14 @@ The device was reached over Wi-Fi debugging (`adb connect 192.168.1.63:34939`, d
 
 `dumpsys nfc` records `reader_mode_change{app_info{package_name: "com.pietrondo.aquariummanager"}, flags: 264}` — `FLAG_READER_NFC_V | FLAG_READER_NO_PLATFORM_SOUNDS` — so the reader mode is really active for the app. A screenshot of the Aquariums tab shows the new "Tag NFC" card with the explanation, the "Associa tag NFC" action and the active aquarium, in the Italian locale of the device. No `AndroidRuntime` error was logged for the app.
 
-**Not claimed:** no physical tag was touched during this session, so the end-to-end read of a real sticker is not verified here; the UID decoding is covered by the unit tests and the reader-mode registration by `dumpsys`. Backup behaviour on the device was verified by the failing automatic-backup report that prompted the fix, not by a successful export of the patched build.
+### The backup fix verified on the device
+
+The patched build was installed over the failing one and the automatic backup was run from the settings screen: **"Verified automatic backup saved (17 records)"**, and the state line changed from the failure to the success. The archive written to the device (`/sdcard/Documents/aquarium-auto-backup-….zip`) was pulled and opened: `library.json` now carries the eleventh table key `maintenanceTypes` with `{"code":"custom:Catappa","label":"Catappa"}`, and the maintenance events reference `custom:Catappa` — the archive is self-contained.
+
+The same file was then restored from the device through the SAF picker: the preview reports **"App version: 0.1.0 • Format v2"**, and the restore answers **"Library restored (17 records). Safety snapshot saved."** The database pulled after the restore still holds the aquarium row and the `custom:Catappa` maintenance type, with `user_version = 4`.
+
+Two layout defects visible on the device were fixed in the same pass: the "Esegui backup ora" button was squeezed into a one-character-wide column (it is now a wrapping `FlowRow`, so both buttons read horizontally), and the settings screen showed the raw SAF tree URI instead of the folder name (it now shows `Cartella: Documents`, and the hardcoded English `Folder:` / `Status:` / `Last verified backup:` labels use the string resources, so they are localized).
+
+**Not claimed:** no physical tag was touched during this session, so the end-to-end read of a real sticker is not verified here; the UID decoding is covered by the unit tests and the reader-mode registration by `dumpsys`. An antivirus dialog flagged the debug APK as suspicious on the device — a known false positive for a debuggable build, not a finding about the release artifact.
+
 
