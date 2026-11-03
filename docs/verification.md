@@ -202,4 +202,37 @@ Two layout defects visible on the device were fixed in the same pass: the "Esegu
 
 **Not claimed:** no physical tag was touched during this session, so the end-to-end read of a real sticker is not verified here; the UID decoding is covered by the unit tests and the reader-mode registration by `dumpsys`. An antivirus dialog flagged the debug APK as suspicious on the device — a known false positive for a debuggable build, not a finding about the release artifact.
 
+## SAF failure modes on a real device (`aq-d34.5`) — 2026-11-03
+
+The SAF failure modes that only a device can show (unavailable provider, revoked grant, out of space, interrupted write, replacing an existing document) are now covered by instrumented tests against a real `ContentResolver`. The data module gained an `androidTest` provider double, `HostileBackupProvider`, that misbehaves on demand: it disappears (`openFile` returns null), loses its grant (throws `SecurityException`), runs out of space (`IOException`), or stores only the first bytes of an archive. The production `SafBackupDocumentGateway` runs unmodified against it.
+
+### What changed in the app
+
+- `BackupDestinationOccupiedException` (domain) separates "the chosen document already holds data" from every other write failure, so a caller can tell a refused replacement from a failed write.
+- The gateway removes the incomplete document **it wrote into itself** when the provider write fails, and never touches a document it refused to write into. The last valid backup is therefore never destroyed by a failed export, and a broken half-written archive does not survive as a file the user could mistake for a backup.
+- The automatic backup path now distinguishes "already removed" (`NOT_FOUND`) from "could not be removed" (`FAILED`), so a generation the gateway already cleaned up no longer reports a pending cleanup.
+- `AquariumListViewModel.exportBackupToUri` accepts a null destination: a cancelled document picker is now an explicit no-op instead of a guard that lives only in the composable.
+
+### Executed verification — Windows, JDK 21, SDK 36/build-tools 35.0.0
+
+| Command | Observed result |
+|---|---|
+| `python -m unittest discover -s tests -v` | **16 passed** (asset tooling + architecture/configuration guards) |
+| `.\gradlew.bat --no-daemon test lint assembleDebug` | **BUILD SUCCESSFUL in 4m 22s**, 169 actionable tasks (39 executed, 130 up-to-date) |
+| `.\gradlew.bat --no-daemon :data:connectedDebugAndroidTest` | **BUILD SUCCESSFUL in 1m 20s**, **5 tests on Pixel 10a - 17** (Android 17) |
+
+Actual JUnit XML reports: **190 variant executions / 113 unique Kotlin tests**, zero failures, errors or skips — domain 36 once, app 24 twice, data 53 twice. Lint: **0 errors / 119 warnings** (no new warning class, no baseline or suppression). Debug APK: **13,828,558 bytes**.
+
+The instrumented run is the second device test batch of this project and covers the five scenarios the bead required:
+
+- `exportFailsAndKeepsTheLastValidBackupWhenTheProviderMisbehaves` — for an unavailable provider, a revoked grant, an out-of-space provider and a provider that stores only a prefix, the export fails, the previously verified archive keeps its exact bytes and stays parseable, and the Room library is unchanged.
+- `exportRefusesToReplaceAnExistingValidBackup` — a second export to the same document is rejected with `BackupDestinationOccupiedException` and the first archive is byte-identical afterwards.
+- `restoreFromARevokedDocumentFailsAndLeavesTheLibraryUnchanged` — a revoked source document cannot replace the live library; the tank count is unchanged and the archive is still restorable once the grant returns.
+
+The first device run of this batch reported `Failed to receive the UTP test results` although every test had passed: the phone was connected twice (a raw TCP transport and the mdns transport) and the result stream was delivered to the wrong one. Disconnecting the duplicate transport made the identical run green; the failure was in the adb transport, not in the app.
+
+**Deviation, stated explicitly:** the cancelled picker is covered by the JVM test `cancelledDocumentPickerDoesNotExportOrChangeState`, not by an instrumented test. A cancelled picker returns no URI and never reaches a document provider, so there is no device behaviour left to observe; automating the system DocumentsUI would only add a flaky UI dependency. The five provider scenarios above are device tests.
+
+**Not claimed:** the fake provider emulates provider failures, it is not a cloud-backed provider; no real user document was touched; Doze/delayed scheduling behaviour is still unverified (`aq-d34.6` stays open), as are themed icons, accessibility and release acceptance (`aq-ct8.2`–`aq-ct8.4`).
+
 
