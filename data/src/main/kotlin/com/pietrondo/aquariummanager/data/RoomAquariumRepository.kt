@@ -770,6 +770,9 @@ class RoomAquariumRepository(
             }
             if (cleanupFailures > 0) {
                 val updated = current.copy(
+                    // The generations that were removed must leave the tracked list even when
+                    // another removal failed, otherwise the app retries them forever.
+                    verifiedAutoGenerations = remaining,
                     lastBackupStatus = "Automatic backup skipped: retention cleanup pending " +
                         "($cleanupFailures of $priorOverflow old files could not be removed)",
                 )

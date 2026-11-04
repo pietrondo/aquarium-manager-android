@@ -2,6 +2,7 @@ package com.pietrondo.aquariummanager.data
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.database.Cursor
 import android.net.Uri
 import android.provider.DocumentsContract
 import com.pietrondo.aquariummanager.domain.BackupDocumentGateway
@@ -24,6 +25,15 @@ class SafBackupDocumentGateway(
     internal var documentDeleter: (Uri) -> Boolean = { uri ->
         DocumentsContract.deleteDocument(context.contentResolver, uri)
     }
+    internal var documentQuery: (Uri) -> Cursor? = { uri ->
+        context.contentResolver.query(
+            uri,
+            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+            null,
+            null,
+            null,
+        )
+    }
 
     internal constructor(
         context: Context,
@@ -32,10 +42,20 @@ class SafBackupDocumentGateway(
         documentDeleter: (Uri) -> Boolean = { uri ->
             DocumentsContract.deleteDocument(context.contentResolver, uri)
         },
+        documentQuery: (Uri) -> Cursor? = { uri ->
+            context.contentResolver.query(
+                uri,
+                arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+                null,
+                null,
+                null,
+            )
+        },
     ) : this(context) {
         this.inputStreamOpener = inputStreamOpener
         this.outputStreamOpener = outputStreamOpener
         this.documentDeleter = documentDeleter
+        this.documentQuery = documentQuery
     }
 
     override suspend fun writeDocument(destinationUri: String, bytes: ByteArray) =
@@ -86,26 +106,41 @@ class SafBackupDocumentGateway(
         withContext(Dispatchers.IO) {
             val uri = Uri.parse(documentUri)
             try {
-                if (documentDeleter(uri)) {
-                    BackupDocumentDeleteResult.DELETED
-                } else {
-                    val cursor = context.contentResolver.query(
-                        uri,
-                        arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
-                        null,
-                        null,
-                        null,
-                    ) ?: return@withContext BackupDocumentDeleteResult.FAILED
-                    cursor.use {
-                        if (it.moveToFirst()) BackupDocumentDeleteResult.FAILED
-                        else BackupDocumentDeleteResult.NOT_FOUND
-                    }
+                when {
+                    documentDeleter(uri) -> BackupDocumentDeleteResult.DELETED
+                    documentIsGone(uri) -> BackupDocumentDeleteResult.NOT_FOUND
+                    else -> BackupDocumentDeleteResult.FAILED
                 }
+            } catch (_: SecurityException) {
+                // The grant is gone: the document may still exist, so this is not a deletion.
+                BackupDocumentDeleteResult.FAILED
             } catch (_: FileNotFoundException) {
+                BackupDocumentDeleteResult.NOT_FOUND
+            } catch (_: IllegalArgumentException) {
+                // The system provider reports a missing document by throwing.
+                BackupDocumentDeleteResult.NOT_FOUND
+            } catch (_: IllegalStateException) {
                 BackupDocumentDeleteResult.NOT_FOUND
             } catch (_: Exception) {
                 BackupDocumentDeleteResult.FAILED
             }
+        }
+
+    /**
+     * A document that no longer exists must be reported as gone, not as a failed deletion:
+     * the system provider reports a missing file by throwing, not by returning an empty cursor.
+     */
+    private fun documentIsGone(uri: Uri): Boolean =
+        try {
+            val cursor = documentQuery(uri) ?: return true
+            cursor.use { !it.moveToFirst() }
+        } catch (_: FileNotFoundException) {
+            true
+        } catch (_: IllegalArgumentException) {
+            // ExternalStorageProvider: "Failed to determine if <doc> is child of <tree>".
+            true
+        } catch (_: IllegalStateException) {
+            true
         }
 
     override suspend fun hasPersistedTreePermission(treeUri: String): Boolean =

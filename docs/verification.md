@@ -249,4 +249,42 @@ The same Pixel 10a (Android 17) already carried the folder selected in the previ
 
 Forcing the periodic job from the shell is not possible: `cmd jobscheduler run` looks the job up by the app package as namespace, while WorkManager registers it under `androidx.work.systemjobscheduler`, so the command reports "Could not find job 3 in package com.pietrondo.aquariummanager". Doze deferral is owned by WorkManager and the design promises a best-effort daily backup, never exact-clock execution.
 
+## Adaptive and monochrome launcher icon (`aq-ct8.2`) — 2026-11-04
+
+**Owner approval:** the project owner reviewed the icon on the device and answered "sì, va bene" — the current artwork is the approved one. No further regeneration is planned.
+
+**What ships in the APK** (`aapt2 dump resources app-debug.apk`): `mipmap/ic_launcher` with the legacy PNGs at every density plus `mipmap-anydpi-v26/ic_launcher.xml` (adaptive: `@color/ic_launcher_background` `#ff080a26` + `@mipmap/ic_launcher_foreground`) and `mipmap-anydpi-v33/ic_launcher.xml` (the same plus the `<monochrome>` layer), and `drawable/ic_launcher_monochrome` as the vector source of that layer. Legacy mipmaps and Compose UI drawables stay separate.
+
+**Measured, not assumed:**
+
+- *Safe zone*: the artwork occupies 184×192 px of the 432 px (108 dp) adaptive canvas, that is 43% of the canvas, well inside the 66% safe circle, so no launcher mask can clip it.
+- *Masks*: the circle, squircle and rounded-square masks were rendered from the shipped foreground and the background colour (`scripts/icon_review.py`) and inspected — the art is centred and unclipped in all three.
+- *Real launcher*: the Pixel 10a launcher renders the adaptive icon correctly in the drawer (screenshot in the local, ignored `.toolchain/icon-review/`). The launcher icon-shape setting was exercised (circle, squircle) and restored to the original "Predefinito, Cerchio" afterwards; the launcher preference is the user's, not the app's, so it was put back.
+
+**Limit, stated explicitly:** the launcher-rendered *themed* (monochrome) icon could not be captured on this build. The Pixel launcher on this device exposes the icon styles "Crea", "Predefinito" and "Minimal" — there is no "Tematiche" option in the picker, and "Minimal" does not change the drawer icons, so the system never drew the `<monochrome>` layer. What is proven is that the layer is packaged and structurally correct (a single-colour vector, tank outline with waterline and fish) and that it renders as a legible tinted silhouette when drawn locally. The themed rendering is a launcher-side behaviour that this device build does not expose.
+
+`aq-ct8.2` is closed against the owner approval plus this evidence. The themed-icon rendering stays a device-dependent check, not an app defect.
+
+## Scheduled backups, retention and revoked grant (`aq-d34.6`) — 2026-11-04
+
+The device acceptance found a real defect: the automatic backup had stopped taking new generations and was reporting "retention cleanup pending (1 of 1 old files could not be removed)" forever.
+
+**Root cause.** `DocumentsContract.deleteDocument` does not report a missing document with an empty cursor: on a real device the provider **throws** `IllegalArgumentException: Failed to determine if primary:Documents/<file>.zip is child of primary:Documents … Missing file`. `SafBackupDocumentGateway.deleteDocumentResult` mapped any exception to `FAILED`, so a generation that had already been deleted looked like a file that could not be removed. The retention pruning then stopped the backup, and because the early return skipped persisting the list of removed generations, the app kept tracking documents that no longer existed and retried them on every run. The JVM tests could not see it: their fake gateway returns `NOT_FOUND` correctly, only the real provider throws.
+
+**Fix.** A document that is gone is now reported as `NOT_FOUND` (the query result is inspected and the provider's "missing file" exceptions are recognised), a revoked grant stays `FAILED` (the file may still exist), and the generations that *were* removed leave the tracked list even when another removal failed. Three JVM tests cover the three outcomes.
+
+Executed verification for the whole change: `python -m unittest discover -s tests -v` → **17 passed**; `.\gradlew.bat --no-daemon test lint assembleDebug` → **BUILD SUCCESSFUL in 3m 42s**, JUnit XML **198 variant executions / 114 unique Kotlin tests**, zero failures or errors, lint **0 errors / 119 warnings**, debug APK **13,828,558 bytes**.
+
+**Verified on the Pixel 10a (Android 17) after reinstalling the patched build:**
+
+- The backup resumed immediately: "Verified automatic backup saved (17 records)", `lastBackupAt 2026-11-04T10:09:24Z`.
+- The stale entries drained out and the list converged: **7 tracked generations = exactly 7 files on disk**, matching `retentionCount` 7, with the oldest pruned on every run.
+- The manual archive `aquarium-manual-backup.zip` placed in the same folder was never touched by any of the runs — retention only removes the app's own verified generations.
+- With the schedule pointed at a folder the app has no grant for, the run pauses with the actionable status **"Folder permission required — please reselect backup folder"**, writes nothing and leaves the existing backups alone; restoring the original folder makes the next run succeed again.
+- Two unattended runs of the periodic work were observed without any interaction (`2026-11-03T08:41Z` and again hours later), and the job is registered as `JOB androidx.work.systemjobscheduler:u0a387/3 #AutoBackupWorker#…` with `dumpsys jobscheduler`.
+
+**Still not claimed:** Doze deferral. Forcing the periodic job from the shell does not work (`cmd jobscheduler run` looks the job up by the app package while WorkManager registers it under the `androidx.work.systemjobscheduler` namespace), so the Doze case needs the emulator route (`adb shell battery unplug` plus `adb shell dumpsys deviceidle force-idle`). The design promises a best-effort daily backup, never exact-clock execution, and the deferral itself belongs to WorkManager.
+
+`aq-d34.6` is closed against this evidence; the Doze deferral stays an explicit open item of the release acceptance (`aq-ct8.4`).
+
 

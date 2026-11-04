@@ -1,7 +1,10 @@
 package com.pietrondo.aquariummanager.data
 
+import android.database.MatrixCursor
 import android.net.Uri
+import android.provider.DocumentsContract
 import com.pietrondo.aquariummanager.domain.BackupDestinationOccupiedException
+import com.pietrondo.aquariummanager.domain.BackupDocumentDeleteResult
 import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.io.OutputStream
@@ -123,5 +126,72 @@ class SafBackupDocumentGatewayTest {
         assertEquals(listOf(newUriText), deleted)
         assertFalse(files.containsKey(newUriText))
         assertEquals(oldBackup.toList(), files.getValue(uriText).toList())
+    }
+
+    @Test
+    fun aDocumentThatIsAlreadyGoneIsReportedAsNotFound() = runBlocking {
+        val uriText = "content://example/backup.zip"
+        // The system provider reports a missing file by throwing, not with an empty cursor.
+        val gateway = SafBackupDocumentGateway(
+            context = RuntimeEnvironment.getApplication(),
+            inputStreamOpener = { ByteArrayInputStream(byteArrayOf()) },
+            outputStreamOpener = { _, _ -> null },
+            documentDeleter = { false },
+            documentQuery = { throw IllegalArgumentException("Missing file for primary:Documents/backup.zip") },
+        )
+
+        assertEquals(
+            BackupDocumentDeleteResult.NOT_FOUND,
+            gateway.deleteDocumentResult(uriText),
+        )
+    }
+
+    @Test
+    fun aDeleteThatThrowsBecauseTheDocumentIsGoneIsReportedAsNotFound() = runBlocking {
+        val uriText = "content://example/backup.zip"
+        val gateway = SafBackupDocumentGateway(
+            context = RuntimeEnvironment.getApplication(),
+            inputStreamOpener = { ByteArrayInputStream(byteArrayOf()) },
+            outputStreamOpener = { _, _ -> null },
+            documentDeleter = { throw IllegalArgumentException("Missing file for primary:Documents/backup.zip") },
+            documentQuery = { throw IllegalArgumentException("Missing file for primary:Documents/backup.zip") },
+        )
+
+        assertEquals(
+            BackupDocumentDeleteResult.NOT_FOUND,
+            gateway.deleteDocumentResult(uriText),
+        )
+    }
+
+    @Test
+    fun aDocumentThatStillExistsAndCannotBeDeletedIsReportedAsFailed() = runBlocking {
+        val uriText = "content://example/backup.zip"
+        val gateway = SafBackupDocumentGateway(
+            context = RuntimeEnvironment.getApplication(),
+            inputStreamOpener = { ByteArrayInputStream(byteArrayOf()) },
+            outputStreamOpener = { _, _ -> null },
+            documentDeleter = { false },
+            documentQuery = {
+                MatrixCursor(arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID)).apply {
+                    addRow(arrayOf<Any>("primary:Documents/backup.zip"))
+                }
+            },
+        )
+
+        assertEquals(BackupDocumentDeleteResult.FAILED, gateway.deleteDocumentResult(uriText))
+    }
+
+    @Test
+    fun aRevokedGrantIsReportedAsFailedAndNotAsGone() = runBlocking {
+        val uriText = "content://example/backup.zip"
+        val gateway = SafBackupDocumentGateway(
+            context = RuntimeEnvironment.getApplication(),
+            inputStreamOpener = { ByteArrayInputStream(byteArrayOf()) },
+            outputStreamOpener = { _, _ -> null },
+            documentDeleter = { false },
+            documentQuery = { throw SecurityException("Permission Denial: the grant has been revoked") },
+        )
+
+        assertEquals(BackupDocumentDeleteResult.FAILED, gateway.deleteDocumentResult(uriText))
     }
 }
