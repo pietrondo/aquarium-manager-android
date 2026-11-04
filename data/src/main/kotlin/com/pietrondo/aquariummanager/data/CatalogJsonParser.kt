@@ -2,6 +2,8 @@ package com.pietrondo.aquariummanager.data
 
 import com.pietrondo.aquariummanager.domain.AquariumProfile
 import com.pietrondo.aquariummanager.domain.CatalogBundle
+import com.pietrondo.aquariummanager.domain.CatalogRename
+import com.pietrondo.aquariummanager.domain.CatalogRenameTarget
 import com.pietrondo.aquariummanager.domain.DoseUnitCatalogItem
 import com.pietrondo.aquariummanager.domain.DoseUnitDimension
 import com.pietrondo.aquariummanager.domain.MaintenanceTypeCatalogItem
@@ -39,6 +41,7 @@ object CatalogJsonParser {
             val maintenanceArray = root.getJSONArray("maintenanceTypes")
             val doseUnitsArray = root.getJSONArray("doseUnits")
             val speciesArray = root.getJSONArray("species")
+            val renames = mutableListOf<CatalogRename>()
 
             val profileLabels = buildList(profilesArray.length()) {
                 for (i in 0 until profilesArray.length()) {
@@ -46,6 +49,16 @@ object CatalogJsonParser {
                     val id = parseCanonicalUuid(obj.requireNonNullString("id"), "profileLabels[$i].id")
                     val name = obj.requireNonNullString("name").trim()
                     add(AquariumProfile(id = id, name = name))
+                    obj.optionalPreviousName()?.let { previous ->
+                        renames.add(
+                            CatalogRename(
+                                target = CatalogRenameTarget.PROFILE,
+                                id = id,
+                                previousName = previous,
+                                newName = name,
+                            )
+                        )
+                    }
                 }
             }
 
@@ -99,6 +112,17 @@ object CatalogJsonParser {
                             scientificName = scientificName,
                         )
                     )
+                    obj.optionalPreviousName()?.let { previous ->
+                        renames.add(
+                            CatalogRename(
+                                target = CatalogRenameTarget.SPECIES,
+                                id = id,
+                                previousName = previous,
+                                newName = commonName,
+                                newScientificName = scientificName,
+                            )
+                        )
+                    }
                 }
             }
 
@@ -109,10 +133,18 @@ object CatalogJsonParser {
                 maintenanceTypes = maintenanceTypes,
                 doseUnits = doseUnits,
                 species = species,
+                renames = renames,
             )
         } catch (e: JSONException) {
             throw IllegalArgumentException("Invalid catalog JSON structure: ${e.message}", e)
         }
+    }
+
+    /** Optional packaged name this row carried before a rename, used to migrate seeded rows. */
+    private fun JSONObject.optionalPreviousName(): String? {
+        if (!has("previousName") || isNull("previousName")) return null
+        val previous = getString("previousName").trim()
+        return previous.takeIf { it.isNotEmpty() }
     }
 
     private fun JSONObject.requireNonNullString(key: String): String {

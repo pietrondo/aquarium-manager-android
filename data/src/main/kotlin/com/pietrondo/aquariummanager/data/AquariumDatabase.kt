@@ -438,6 +438,8 @@ interface AquariumDao {
     @Update suspend fun updateProfile(profile: AquariumProfileEntity)
     @Query("DELETE FROM aquarium_profiles WHERE id = :id")
     suspend fun deleteProfileById(id: UUID)
+    @Query("UPDATE aquarium_profiles SET name = :newName WHERE id = :id AND name = :previousName")
+    suspend fun renameProfileIfCurrent(id: UUID, previousName: String, newName: String)
     @Query("SELECT * FROM aquarium_profile_links")
     fun observeAllProfileLinks(): Flow<List<AquariumProfileLinkEntity>>
     @Insert suspend fun insertProfileLink(link: AquariumProfileLinkEntity)
@@ -528,6 +530,13 @@ interface AquariumDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSpeciesIgnore(species: SpeciesEntity): Long
     @Update suspend fun updateSpecies(species: SpeciesEntity)
+    @Query("UPDATE species SET commonName = :newName, scientificName = :newScientificName WHERE id = :id AND commonName = :previousName")
+    suspend fun renameSpeciesIfCurrent(
+        id: UUID,
+        previousName: String,
+        newName: String,
+        newScientificName: String?,
+    )
     @Query("DELETE FROM species WHERE id = :id")
     suspend fun deleteSpeciesById(id: UUID)
     @Query("SELECT COUNT(*) FROM stock_entries WHERE speciesId = :speciesId")

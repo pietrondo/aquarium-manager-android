@@ -60,10 +60,16 @@
     <string name="filter_fauna">Fauna</string>
     <string name="filter_flora">Flora</string>
     <string name="add_stock_entry">Aggiungi alla vasca</string>
-    <string name="add_species">Aggiungi specie</string>
+    <string name="legal_unencrypted_backup">I backup sono archivi ZIP non cifrati con manifest.json e library.json. Chiunque abbia accesso al file può leggere le note e le cronologie dei tuoi acquari.</string>
+<string name="legal_biological_disclaimer">Le voci del catalogo specie, gli andamenti dei parametri e i piani di dosaggio sono solo registrazioni informative. L\'app non fornisce consigli veterinari o biologici e non garantisce l\'idoneità delle specie, la sicurezza dell\'acqua o i risultati.</string>
+<string name="legal_offline_privacy">100%% offline: nessun account, nessuna analitica, nessun permesso internet e nessun server cloud. I dati restano nella memoria Room locale e nei file di backup SAF scelti da te.</string>
+<string name="language_title">Lingua</string>
+<string name="language_system">Sistema</string>
+<string name="language_hint">L\'app usa questa lingua al posto di quella di sistema.</string>
 <string name="stock_new_species_title">Nuova specie</string>
 <string name="stock_new_species_name">Nome comune</string>
 <string name="stock_new_species_add">Aggiungi e seleziona</string>
+<string name="add_species">Aggiungi specie</string>
     <string name="add_product">Aggiungi prodotto</string>
     <string name="add_dosing_plan">Aggiungi piano di dosaggio</string>
     <string name="log_adhoc_dose">Dose occasionale</string>

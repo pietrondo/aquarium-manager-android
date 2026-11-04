@@ -58,7 +58,7 @@ class CatalogAndCrudRepositoryTest {
         assertEquals(6, catalog.profileLabels.size)
         assertTrue(
             catalog.profileLabels.any {
-                it.id == UUID.fromString("00000000-0000-4000-8000-000000000101") && it.name == "Planted"
+                it.id == UUID.fromString("00000000-0000-4000-8000-000000000101") && it.name == "Piante"
             }
         )
         assertEquals(
@@ -187,13 +187,13 @@ class CatalogAndCrudRepositoryTest {
     fun multiAquariumCrudSupportsUnknownLitresOverlappingProfilesAndDuplicateLabelPrevention() = runBlocking {
         repo.ensureCatalogSeeded()
         val initialProfiles = repo.observeProfiles().first()
-        val planted = initialProfiles.first { it.name == "Planted" }
-        val shrimp = initialProfiles.first { it.name == "Shrimp" }
-        val community = initialProfiles.first { it.name == "Freshwater Community" }
+        val planted = initialProfiles.first { it.name == "Piante" }
+        val shrimp = initialProfiles.first { it.name == "Gamberetti" }
+        val community = initialProfiles.first { it.name == "Comunità d'acqua dolce" }
 
         // Duplicate profile name (case-insensitive) and blank name are rejected
         assertThrows(IllegalArgumentException::class.java) {
-            runBlocking { repo.createProfile("  planted ") }
+            runBlocking { repo.createProfile("  piante ") }
         }
         assertThrows(IllegalArgumentException::class.java) {
             runBlocking { repo.createProfile("   ") }
@@ -230,14 +230,14 @@ class CatalogAndCrudRepositoryTest {
         assertNull(nano.netLitres)
         assertNull(nano.grossLitres)
         assertEquals("Unmeasured quarantine bowl", nano.notes)
-        assertEquals(listOf("Planted", "Shrimp"), nano.profiles.map { it.name })
+        assertEquals(listOf("Gamberetti", "Piante"), nano.profiles.map { it.name })
 
         assertEquals("Living Room Scape", livingRoom.name)
         assertEquals(0, BigDecimal("142.5").compareTo(livingRoom.netLitres))
         assertEquals(0, BigDecimal("180").compareTo(livingRoom.grossLitres))
         assertNull(livingRoom.notes)
         assertEquals(
-            listOf("Freshwater Community", "High-Tech CO2", "Planted"),
+            listOf("Comunità d'acqua dolce", "High-Tech CO2", "Piante"),
             livingRoom.profiles.map { it.name },
         )
 
@@ -258,7 +258,7 @@ class CatalogAndCrudRepositoryTest {
         assertEquals(0, BigDecimal("24.5").compareTo(updatedNano.netLitres))
         assertEquals(0, BigDecimal("30").compareTo(updatedNano.grossLitres))
         assertNull(updatedNano.notes)
-        assertEquals(listOf("High-Tech CO2", "Shrimp"), updatedNano.profiles.map { it.name })
+        assertEquals(listOf("Gamberetti", "High-Tech CO2"), updatedNano.profiles.map { it.name })
     }
 
     @Test

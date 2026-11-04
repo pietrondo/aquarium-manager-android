@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.pietrondo.aquariummanager.AppLanguage
 import com.pietrondo.aquariummanager.R
 import com.pietrondo.aquariummanager.nfc.NfcTagReader
 import com.pietrondo.aquariummanager.domain.APACHE_LICENSE_AND_NOTICES_TEXT
@@ -1586,6 +1587,12 @@ private fun IdentifiedAquariumDialog(
 }
 
 @Composable
+private fun speciesKindLabel(kind: SpeciesKind): String =
+    stringResource(
+        if (kind == SpeciesKind.FAUNA) R.string.species_kind_fauna else R.string.species_kind_flora
+    )
+
+@Composable
 private fun MeasurementEditorDialog(
     editor: MeasurementEditorState,
     aquariumName: String,
@@ -2366,7 +2373,7 @@ private fun StockEntryCard(
                         onClick = {},
                         label = {
                             Text(
-                                text = entry.species.kind.name,
+                                text = speciesKindLabel(entry.species.kind),
                                 style = MaterialTheme.typography.labelSmall,
                             )
                         },
@@ -2464,7 +2471,7 @@ private fun SpeciesCatalogCard(
                     )
                 }
                 Text(
-                    text = species.kind.name,
+                    text = speciesKindLabel(species.kind),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -2684,7 +2691,7 @@ private fun SpeciesEditorDialog(
                         FilterChip(
                             selected = editor.selectedKind == kind,
                             onClick = { onSelectKind(kind) },
-                            label = { Text(kind.name) },
+                            label = { Text(speciesKindLabel(kind)) },
                         )
                     }
                 }
@@ -2786,7 +2793,7 @@ private fun StockEditorDialog(
                         FilterChip(
                             selected = editor.selectedSpeciesId == species.id,
                             onClick = { onSelectSpecies(species.id) },
-                            label = { Text("${species.commonName} (${species.kind.name})") },
+                            label = { Text("${species.commonName} (${speciesKindLabel(species.kind)})") },
                         )
                     }
                 }
@@ -3205,10 +3212,48 @@ private fun SettingsAndDisclosuresTab(
 ) {
     val schedule = state.backupScheduleSettings
     val treeUri = schedule.treeUri
+    val context = LocalContext.current
+    val language = AppLanguage.current(context)
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+        if (AppLanguage.isSupported) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = stringResource(R.string.language_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        FilterChip(
+                            selected = language == null,
+                            onClick = { AppLanguage.select(context, null) },
+                            label = { Text(stringResource(R.string.language_system)) },
+                        )
+                        FilterChip(
+                            selected = language == "it",
+                            onClick = { AppLanguage.select(context, "it") },
+                            label = { Text("Italiano") },
+                        )
+                        FilterChip(
+                            selected = language == "en",
+                            onClick = { AppLanguage.select(context, "en") },
+                            label = { Text("English") },
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.language_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(
@@ -3250,7 +3295,7 @@ private fun SettingsAndDisclosuresTab(
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = UNENCRYPTED_BACKUP_DISCLOSURE,
+                        text = stringResource(R.string.legal_unencrypted_backup),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -3385,7 +3430,7 @@ private fun SettingsAndDisclosuresTab(
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = BIOLOGICAL_AND_DOSING_DISCLAIMER,
+                        text = stringResource(R.string.legal_biological_disclaimer),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -3406,7 +3451,7 @@ private fun SettingsAndDisclosuresTab(
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = OFFLINE_PRIVACY_SUMMARY,
+                        text = stringResource(R.string.legal_offline_privacy),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

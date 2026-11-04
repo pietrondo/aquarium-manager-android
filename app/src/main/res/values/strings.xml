@@ -59,7 +59,13 @@
     <string name="filter_fauna">Fauna</string>
     <string name="filter_flora">Flora</string>
     <string name="add_stock_entry">Add stock</string>
-    <string name="add_species">Add species</string>
+    <string name="language_title">Language</string>
+<string name="legal_unencrypted_backup">Backups are unencrypted ZIP archives containing manifest.json and library.json. Anyone with access to the file can read your aquarium notes and histories.</string>
+<string name="legal_biological_disclaimer">Species catalog entries, water parameter trends, and dosing schedules are informational records only. This app does not provide veterinary or biological advice and does not guarantee species suitability, water safety, or outcomes.</string>
+<string name="legal_offline_privacy">100%% offline: no accounts, no analytics, no internet permission, and no cloud servers. Data stays in local Room storage and user-chosen SAF backup files.</string>
+<string name="language_system">System</string>
+<string name="language_hint">The app uses this language instead of the system one.</string>
+<string name="add_species">Add species</string>
 <string name="stock_new_species_title">New species</string>
 <string name="stock_new_species_name">Common name</string>
 <string name="stock_new_species_add">Add and select</string>

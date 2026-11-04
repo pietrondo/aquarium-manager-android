@@ -265,6 +265,39 @@ Verified: `.\gradlew.bat --no-daemon test lint assembleDebug` green (57 data tes
 the Pixel 10a because USB debugging dropped to `unauthorized` at the end of the session;
 the on-device check of the new dialog and of the 85 entries is therefore **not claimed**.
 
+### Language switch and leftover English copy
+
+The manifest now declares `android:localeConfig`, so Android 13+ also exposes the per-app
+language page in the system settings, and the settings tab gained an in-app selector
+(**Sistema / Italiano / English**) backed by `LocaleManager`; the system recreates the
+activity on change. Only API 33+ has per-app locales, so below that the selector is
+hidden and the app follows the system locale.
+
+Three things were still English on a device set to Italian:
+
+1. The `profileLabels` of the packaged catalog (Planted, Shrimp, …) and the six original
+   species names. A new optional `previousName` field in the catalog lets seeding rename a
+   row **only while it still carries the previously packaged name**, so a user-edited row
+   is never overwritten. Confirmed on the Pixel 10a: the database now holds
+   `Piante`, `Gamberetti`, `Comunità d'acqua dolce`, … and
+   `Gamberetto Amano`, `Gamberetto Cherry`, `Neon`, `Felce di Giava`, `Anubias nana`,
+   `Spada amazzonica` with **85 species (50 fauna, 35 flora)**.
+2. The species kind badge printed the raw enum (`FAUNA`/`FLORA`); it now uses the
+   localized `species_kind_*` strings.
+3. The three user-facing disclosures (unencrypted backup, biological/dosing, offline
+   privacy) lived as English constants in the domain module; the UI now reads localized
+   string resources. The Apache license text stays in English on purpose.
+
+Verified on the Pixel 10a before the connection dropped: the NFC card shows
+**"Identifica acquario"**, the Italian profile chips, the species catalog with Italian
+names and `Fauna`/`Flora` badges, and the settings screen shows
+**Lingua → Sistema / Italiano / English**.
+
+**Still English:** the validation and error messages produced by `AquariumListViewModel`.
+The `msg_*` resources already exist in both locales but the view model still writes the
+English literal; wiring them through `UiStrings` is the next step and is **not done**.
+
+
 
 ## SAF failure modes on a real device (`aq-d34.5`) — 2026-11-03
 

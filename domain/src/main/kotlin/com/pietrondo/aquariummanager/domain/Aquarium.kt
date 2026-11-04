@@ -64,6 +64,20 @@ data class SpeciesCatalogItem(
     }
 }
 
+enum class CatalogRenameTarget { PROFILE, SPECIES }
+
+/**
+ * Renames a seeded catalog row, but only while it still carries [previousName]: a row
+ * the user edited is left untouched.
+ */
+data class CatalogRename(
+    val target: CatalogRenameTarget,
+    val id: UUID,
+    val previousName: String,
+    val newName: String,
+    val newScientificName: String? = null,
+)
+
 data class CatalogBundle(
     val format: String = CATALOG_FORMAT_ID,
     val version: Int = 1,
@@ -71,6 +85,7 @@ data class CatalogBundle(
     val maintenanceTypes: List<MaintenanceTypeCatalogItem>,
     val doseUnits: List<DoseUnitCatalogItem>,
     val species: List<SpeciesCatalogItem>,
+    val renames: List<CatalogRename> = emptyList(),
 ) {
     init {
         require(format == CATALOG_FORMAT_ID) { "Unsupported catalog format: $format" }

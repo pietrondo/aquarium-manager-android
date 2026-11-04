@@ -13,6 +13,7 @@ import com.pietrondo.aquariummanager.domain.BackupManifest
 import com.pietrondo.aquariummanager.domain.BackupRestorePreview
 import com.pietrondo.aquariummanager.domain.BackupScheduleSettings
 import com.pietrondo.aquariummanager.domain.CatalogBundle
+import com.pietrondo.aquariummanager.domain.CatalogRenameTarget
 import com.pietrondo.aquariummanager.domain.DoseUnitCatalogItem
 import com.pietrondo.aquariummanager.domain.DosingEventDraft
 import com.pietrondo.aquariummanager.domain.DosingEventRecord
@@ -208,6 +209,20 @@ class RoomAquariumRepository(
     }
 
     suspend fun seedCatalog(bundle: CatalogBundle) = operationMutex.withLock {
+        // Migrate rows that still carry a packaged name the catalog has since renamed.
+        for (rename in bundle.renames) {
+            when (rename.target) {
+                CatalogRenameTarget.PROFILE ->
+                    dao.renameProfileIfCurrent(rename.id, rename.previousName, rename.newName)
+                CatalogRenameTarget.SPECIES ->
+                    dao.renameSpeciesIfCurrent(
+                        rename.id,
+                        rename.previousName,
+                        rename.newName,
+                        rename.newScientificName,
+                    )
+            }
+        }
         val profileEntities = bundle.profileLabels.map {
             AquariumProfileEntity(id = it.id, name = it.name.trim())
         }

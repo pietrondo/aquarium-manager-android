@@ -4,27 +4,33 @@
   "profileLabels": [
     {
       "id": "00000000-0000-4000-8000-000000000101",
-      "name": "Planted"
+      "name": "Piante",
+      "previousName": "Planted"
     },
     {
       "id": "00000000-0000-4000-8000-000000000102",
-      "name": "Freshwater Community"
+      "name": "Comunità d'acqua dolce",
+      "previousName": "Freshwater Community"
     },
     {
       "id": "00000000-0000-4000-8000-000000000103",
-      "name": "Shrimp"
+      "name": "Gamberetti",
+      "previousName": "Shrimp"
     },
     {
       "id": "00000000-0000-4000-8000-000000000104",
-      "name": "Reef / Marine"
+      "name": "Marino / Reef",
+      "previousName": "Reef / Marine"
     },
     {
       "id": "00000000-0000-4000-8000-000000000105",
-      "name": "Quarantine"
+      "name": "Quarantena",
+      "previousName": "Quarantine"
     },
     {
       "id": "00000000-0000-4000-8000-000000000106",
-      "name": "Breeding"
+      "name": "Riproduzione",
+      "previousName": "Breeding"
     }
   ],
   "maintenanceTypes": [
@@ -80,37 +86,43 @@
       "id": "00000000-0000-4000-8000-000000000201",
       "kind": "FAUNA",
       "commonName": "Gamberetto Amano",
-      "scientificName": "Caridina multidentata"
+      "scientificName": "Caridina multidentata",
+      "previousName": "Amano Shrimp"
     },
     {
       "id": "00000000-0000-4000-8000-000000000202",
       "kind": "FAUNA",
       "commonName": "Gamberetto Cherry",
-      "scientificName": "Neocaridina davidi"
+      "scientificName": "Neocaridina davidi",
+      "previousName": "Cherry Shrimp"
     },
     {
       "id": "00000000-0000-4000-8000-000000000203",
       "kind": "FAUNA",
       "commonName": "Neon",
-      "scientificName": "Paracheirodon innesi"
+      "scientificName": "Paracheirodon innesi",
+      "previousName": "Neon Tetra"
     },
     {
       "id": "00000000-0000-4000-8000-000000000204",
       "kind": "FLORA",
       "commonName": "Felce di Giava",
-      "scientificName": "Microsorum pteropus"
+      "scientificName": "Microsorum pteropus",
+      "previousName": "Java Fern"
     },
     {
       "id": "00000000-0000-4000-8000-000000000205",
       "kind": "FLORA",
       "commonName": "Anubias nana",
-      "scientificName": "Anubias barteri var. nana"
+      "scientificName": "Anubias barteri var. nana",
+      "previousName": "Anubias Nana"
     },
     {
       "id": "00000000-0000-4000-8000-000000000206",
       "kind": "FLORA",
       "commonName": "Spada amazzonica",
-      "scientificName": "Echinodorus grisebachii"
+      "scientificName": "Echinodorus grisebachii",
+      "previousName": "Amazon Sword"
     },
     {
       "id": "00000000-0000-4000-8000-000000000207",
