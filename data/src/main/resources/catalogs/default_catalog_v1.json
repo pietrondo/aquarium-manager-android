@@ -127,8 +127,9 @@
     {
       "id": "00000000-0000-4000-8000-000000000207",
       "kind": "FAUNA",
-      "commonName": "Cardinale",
-      "scientificName": "Paracheirodon axelrodi"
+      "commonName": "Neon cardinale",
+      "scientificName": "Paracheirodon axelrodi",
+      "previousName": "Cardinale"
     },
     {
       "id": "00000000-0000-4000-8000-000000000208",
@@ -217,20 +218,23 @@
     {
       "id": "00000000-0000-4000-8000-000000000222",
       "kind": "FAUNA",
-      "commonName": "Barbus tigre",
-      "scientificName": "Puntigrus tetrazona"
+      "commonName": "Barbo tigre",
+      "scientificName": "Puntigrus tetrazona",
+      "previousName": "Barbus tigre"
     },
     {
       "id": "00000000-0000-4000-8000-000000000223",
       "kind": "FAUNA",
-      "commonName": "Barbus ciliegia",
-      "scientificName": "Puntius titteya"
+      "commonName": "Barbo ciliegia",
+      "scientificName": "Puntius titteya",
+      "previousName": "Barbus ciliegia"
     },
     {
       "id": "00000000-0000-4000-8000-000000000224",
       "kind": "FAUNA",
-      "commonName": "Tetra rosso",
-      "scientificName": "Hemigrammus bleheri"
+      "commonName": "Tetra testa rossa",
+      "scientificName": "Hemigrammus bleheri",
+      "previousName": "Tetra rosso"
     },
     {
       "id": "00000000-0000-4000-8000-000000000225",
@@ -265,8 +269,9 @@
     {
       "id": "00000000-0000-4000-8000-000000000230",
       "kind": "FAUNA",
-      "commonName": "Koi",
-      "scientificName": "Cyprinus rubrofuscus"
+      "commonName": "Carpa koi",
+      "scientificName": "Cyprinus rubrofuscus",
+      "previousName": "Koi"
     },
     {
       "id": "00000000-0000-4000-8000-000000000231",
@@ -343,8 +348,9 @@
     {
       "id": "00000000-0000-4000-8000-000000000243",
       "kind": "FAUNA",
-      "commonName": "Pesce paradiso",
-      "scientificName": "Macropodus opercularis"
+      "commonName": "Pesce del paradiso",
+      "scientificName": "Macropodus opercularis",
+      "previousName": "Pesce paradiso"
     },
     {
       "id": "00000000-0000-4000-8000-000000000244",
@@ -403,8 +409,9 @@
     {
       "id": "00000000-0000-4000-8000-000000000253",
       "kind": "FAUNA",
-      "commonName": "Gamberetto Bamboo",
-      "scientificName": "Atyopsis moluccensis"
+      "commonName": "Gambero radar",
+      "scientificName": "Atyopsis moluccensis",
+      "previousName": "Gamberetto Bamboo"
     },
     {
       "id": "00000000-0000-4000-8000-000000000254",

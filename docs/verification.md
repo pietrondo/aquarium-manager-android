@@ -297,6 +297,21 @@ names and `Fauna`/`Flora` badges, and the settings screen shows
 The `msg_*` resources already exist in both locales but the view model still writes the
 English literal; wiring them through `UiStrings` is the next step and is **not done**.
 
+### Italian species names checked against several sources
+
+The Italian common names were cross-checked against Italian Wikipedia (`it.wikipedia.org`
+API, first sentence of each species page) plus Italian aquarium sources
+(*Acquariofilia Consapevole*, atlarium.bio, ilnostroacquario.com, animal-park.it) to keep
+the names people actually use in shops. Corrections applied: `Neon cardinale`,
+`Barbo tigre`, `Barbo ciliegia`, `Tetra testa rossa` (*Hemigrammus bleheri*, confirmed on
+three Italian sources), `Pesce del paradiso`, `Carpa koi`, `Gambero radar`
+(*Atyopsis moluccensis*; Italian Wikipedia lists "gambero radar / del ventaglio").
+Confirmed already correct: `neon`, `scalare`, `platy`, `guppy`, `corydoras bronzeo`,
+`pesce elefante`, `arowana argentato`, `gurami perla`, `gurami nano`, `carassio`,
+`pesce rosso`, `oscar`. Each renamed row carries a `previousName`, so installed devices
+pick the new name up while user-edited rows stay untouched.
+
+
 
 
 ## SAF failure modes on a real device (`aq-d34.5`) — 2026-11-03
