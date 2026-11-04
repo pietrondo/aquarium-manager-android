@@ -113,6 +113,9 @@ data class StockEditorState(
     val introducedDateInput: String = "",
     val exitedDateInput: String = "",
     val notesInput: String = "",
+    val newSpeciesInput: String = "",
+    val newSpeciesKind: SpeciesKind = SpeciesKind.FAUNA,
+    val newSpeciesError: String? = null,
     val validationError: String? = null,
     val isSaving: Boolean = false,
 )
@@ -188,6 +191,8 @@ sealed interface AquariumListState {
         val actionError: String? = null,
         val nfcTagBindings: List<NfcTagBinding> = emptyList(),
         val isNfcAssigningTag: Boolean = false,
+        val isNfcIdentifying: Boolean = false,
+        val identifiedAquariumId: UUID? = null,
         val nfcStatus: NfcStatus? = null,
         val backupScheduleSettings: com.pietrondo.aquariummanager.domain.BackupScheduleSettings =
             com.pietrondo.aquariummanager.domain.BackupScheduleSettings(),
@@ -367,6 +372,8 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                             actionError = previous?.actionError,
                             nfcTagBindings = unmodifiableNfcTags,
                             isNfcAssigningTag = previous?.isNfcAssigningTag ?: false,
+                            isNfcIdentifying = previous?.isNfcIdentifying ?: false,
+                            identifiedAquariumId = previous?.identifiedAquariumId,
                             nfcStatus = previous?.nfcStatus,
                             backupScheduleSettings = base.backupScheduleSettings,
                             restorePreview = previous?.restorePreview,
@@ -408,6 +415,21 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
         updateSuccess { it.copy(isNfcAssigningTag = false) }
     }
 
+    /** Arms the reader so the next scanned tag opens the aquarium it identifies. */
+    fun startNfcIdentification() {
+        updateSuccess {
+            it.copy(isNfcIdentifying = true, nfcStatus = null, actionError = null)
+        }
+    }
+
+    fun cancelNfcIdentification() {
+        updateSuccess { it.copy(isNfcIdentifying = false) }
+    }
+
+    fun dismissIdentifiedAquarium() {
+        updateSuccess { it.copy(identifiedAquariumId = null) }
+    }
+
     fun dismissNfcStatus() {
         updateSuccess { it.copy(nfcStatus = null) }
     }
@@ -419,10 +441,30 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
     fun onNfcTagScanned(tagId: String) {
         val current = mutableState.value as? AquariumListState.Success ?: return
         val isAssigning = current.isNfcAssigningTag
+        val isIdentifying = current.isNfcIdentifying
         val targetId = current.activeAquariumId
         val targetName = current.activeAquarium?.name
         viewModelScope.launch {
             try {
+                if (isIdentifying) {
+                    val aquariumId = repository.findAquariumIdForNfcTag(tagId)
+                    if (aquariumId == null) {
+                        updateSuccess {
+                            it.copy(isNfcIdentifying = false, nfcStatus = NfcStatus.UnknownTag(tagId))
+                        }
+                    } else {
+                        selectedAquariumIdFlow.value = aquariumId
+                        updateSuccess {
+                            it.copy(
+                                isNfcIdentifying = false,
+                                selectedAquariumId = aquariumId,
+                                identifiedAquariumId = aquariumId,
+                                nfcStatus = null,
+                            )
+                        }
+                    }
+                    return@launch
+                }
                 if (isAssigning) {
                     if (targetId == null) {
                         updateSuccess { it.copy(isNfcAssigningTag = false, nfcStatus = NfcStatus.NoAquariumSelected) }
@@ -1101,6 +1143,83 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
 
     fun closeStockEditor() {
         updateSuccess { it.copy(stockEditorState = null) }
+    }
+
+    fun updateNewSpeciesInput(value: String) {
+        updateStockEditor { it.copy(newSpeciesInput = value, newSpeciesError = null) }
+    }
+
+    fun selectNewSpeciesKind(kind: SpeciesKind) {
+        updateStockEditor { it.copy(newSpeciesKind = kind, newSpeciesError = null) }
+    }
+
+    /**
+     * Creates a species from inside the stock editor and selects it, so a species
+     * missing from the catalog can be added without leaving the flow.
+     */
+    fun createSpeciesForStock() {
+        val current = mutableState.value as? AquariumListState.Success ?: return
+        val editor = current.stockEditorState ?: return
+        if (editor.isSaving) return
+
+        val trimmedCommon = editor.newSpeciesInput.trim()
+        if (trimmedCommon.isEmpty()) {
+            updateStockEditor {
+                it.copy(newSpeciesError = "Species common name cannot be blank.")
+            }
+            return
+        }
+
+        val draft = try {
+            com.pietrondo.aquariummanager.domain.validateUniqueSpeciesCatalog(
+                existing = current.speciesCatalog,
+                kind = editor.newSpeciesKind,
+                commonName = trimmedCommon,
+                scientificName = null,
+                excludingId = null,
+            )
+            SpeciesDraft(
+                kind = editor.newSpeciesKind,
+                commonName = trimmedCommon,
+                scientificName = null,
+            )
+        } catch (e: IllegalArgumentException) {
+            updateStockEditor {
+                it.copy(newSpeciesError = e.message ?: "Invalid species details.")
+            }
+            return
+        }
+
+        updateStockEditor { it.copy(isSaving = true, newSpeciesError = null) }
+        viewModelScope.launch {
+            try {
+                val created = repository.createSpecies(draft)
+                updateStockEditor {
+                    it.copy(
+                        isSaving = false,
+                        selectedSpeciesId = created.id,
+                        newSpeciesInput = "",
+                        newSpeciesError = null,
+                    )
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: IllegalArgumentException) {
+                updateStockEditor {
+                    it.copy(
+                        isSaving = false,
+                        newSpeciesError = e.message ?: "Invalid species details.",
+                    )
+                }
+            } catch (_: Exception) {
+                updateStockEditor {
+                    it.copy(
+                        isSaving = false,
+                        newSpeciesError = "Could not save species. Please try again.",
+                    )
+                }
+            }
+        }
     }
 
     fun selectStockSpecies(speciesId: UUID) {

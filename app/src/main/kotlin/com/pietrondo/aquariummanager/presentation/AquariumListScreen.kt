@@ -82,6 +82,7 @@ import com.pietrondo.aquariummanager.domain.DosingPlanRecord
 import com.pietrondo.aquariummanager.domain.MaintenanceRecord
 import com.pietrondo.aquariummanager.domain.MaintenanceTypeCatalogItem
 import com.pietrondo.aquariummanager.domain.MeasurementRecord
+import com.pietrondo.aquariummanager.domain.NfcTagBinding
 import com.pietrondo.aquariummanager.domain.OFFLINE_PRIVACY_SUMMARY
 import com.pietrondo.aquariummanager.domain.ParameterTrendDirection
 import com.pietrondo.aquariummanager.domain.ParameterTrendSummary
@@ -438,6 +439,8 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                                 },
                                 isNfcAvailable = isNfcAvailable,
                                 isNfcEnabled = isNfcEnabled.value,
+                                onIdentifyNfcTag = viewModel::startNfcIdentification,
+                                onCancelNfcIdentification = viewModel::cancelNfcIdentification,
                                 onAssignNfcTag = viewModel::startNfcTagAssignment,
                                 onCancelNfcAssignment = viewModel::cancelNfcTagAssignment,
                                 onUnbindNfcTag = viewModel::unbindNfcTag,
@@ -610,12 +613,38 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                             speciesCatalog = current.speciesCatalog,
                             onDismiss = viewModel::closeStockEditor,
                             onSelectSpecies = viewModel::selectStockSpecies,
+                            onNewSpeciesChange = viewModel::updateNewSpeciesInput,
+                            onNewSpeciesKindChange = viewModel::selectNewSpeciesKind,
+                            onCreateSpecies = viewModel::createSpeciesForStock,
                             onQuantityChange = viewModel::updateStockQuantityInput,
                             onIntroducedDateChange = viewModel::updateStockIntroducedDateInput,
                             onExitedDateChange = viewModel::updateStockExitedDateInput,
                             onNotesChange = viewModel::updateStockNotesInput,
                             onSave = viewModel::saveStockEntry,
                         )
+                    }
+
+                    current.identifiedAquariumId?.let { identifiedId ->
+                        val identified = current.aquariumDetails.firstOrNull { it.id == identifiedId }
+                        if (identified != null) {
+                            IdentifiedAquariumDialog(
+                                aquarium = identified,
+                                tags = current.nfcTagBindings.filter { it.aquariumId == identifiedId },
+                                onEdit = {
+                                    viewModel.dismissIdentifiedAquarium()
+                                    viewModel.openEditEditor(identifiedId)
+                                },
+                                onOpenWaterTests = {
+                                    viewModel.dismissIdentifiedAquarium()
+                                    viewModel.selectTab(AppTab.TESTS)
+                                },
+                                onOpenMaintenance = {
+                                    viewModel.dismissIdentifiedAquarium()
+                                    viewModel.selectTab(AppTab.MAINTENANCE)
+                                },
+                                onDismiss = viewModel::dismissIdentifiedAquarium,
+                            )
+                        }
                     }
 
                     current.productEditorState?.let { productEditor ->
@@ -685,6 +714,8 @@ private fun AquariumsOverviewTab(
     onOpenMaintenance: (UUID) -> Unit,
     isNfcAvailable: Boolean,
     isNfcEnabled: Boolean,
+    onIdentifyNfcTag: () -> Unit,
+    onCancelNfcIdentification: () -> Unit,
     onAssignNfcTag: () -> Unit,
     onCancelNfcAssignment: () -> Unit,
     onUnbindNfcTag: (String) -> Unit,
@@ -719,6 +750,8 @@ private fun AquariumsOverviewTab(
                 state = state,
                 isNfcAvailable = isNfcAvailable,
                 isNfcEnabled = isNfcEnabled,
+                onIdentifyTag = onIdentifyNfcTag,
+                onCancelIdentification = onCancelNfcIdentification,
                 onAssignTag = onAssignNfcTag,
                 onCancelAssignment = onCancelNfcAssignment,
                 onUnbindTag = onUnbindNfcTag,
@@ -1465,6 +1498,91 @@ private fun AquariumDetailCard(
             }
         }
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun IdentifiedAquariumDialog(
+    aquarium: AquariumDetail,
+    tags: List<NfcTagBinding>,
+    onEdit: () -> Unit,
+    onOpenWaterTests: () -> Unit,
+    onOpenMaintenance: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = aquarium.name,
+                fontWeight = FontWeight.Bold,
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = formatVolumesBadge(
+                        net = aquarium.netLitres,
+                        gross = aquarium.grossLitres,
+                        unknownLabel = stringResource(R.string.volume_unknown),
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (aquarium.profiles.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        aquarium.profiles.forEach { profile ->
+                            AssistChip(onClick = onEdit, label = { Text(profile.name) })
+                        }
+                    }
+                }
+                aquarium.notes?.let { notes ->
+                    Text(
+                        text = notes,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.nfc_bound_count, tags.size),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                tags.forEach { tag ->
+                    Text(
+                        text = stringResource(R.string.nfc_tag_label, formatNfcTagId(tag.tagId)),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onEdit) {
+                Text(stringResource(R.string.edit_aquarium))
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onOpenWaterTests) {
+                    Text(stringResource(R.string.nav_tests))
+                }
+                TextButton(onClick = onOpenMaintenance) {
+                    Text(stringResource(R.string.nav_maintenance))
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.dismiss))
+                }
+            }
+        },
+    )
 }
 
 @Composable
@@ -2609,6 +2727,9 @@ private fun StockEditorDialog(
     speciesCatalog: List<SpeciesCatalogItem>,
     onDismiss: () -> Unit,
     onSelectSpecies: (UUID) -> Unit,
+    onNewSpeciesChange: (String) -> Unit,
+    onNewSpeciesKindChange: (SpeciesKind) -> Unit,
+    onCreateSpecies: () -> Unit,
     onQuantityChange: (String) -> Unit,
     onIntroducedDateChange: (String) -> Unit,
     onExitedDateChange: (String) -> Unit,
@@ -2668,6 +2789,47 @@ private fun StockEditorDialog(
                             label = { Text("${species.commonName} (${species.kind.name})") },
                         )
                     }
+                }
+
+                Text(
+                    text = stringResource(R.string.stock_new_species_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                OutlinedTextField(
+                    value = editor.newSpeciesInput,
+                    onValueChange = onNewSpeciesChange,
+                    label = { Text(stringResource(R.string.stock_new_species_name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FilterChip(
+                        selected = editor.newSpeciesKind == SpeciesKind.FAUNA,
+                        onClick = { onNewSpeciesKindChange(SpeciesKind.FAUNA) },
+                        label = { Text(stringResource(R.string.filter_fauna)) },
+                    )
+                    FilterChip(
+                        selected = editor.newSpeciesKind == SpeciesKind.FLORA,
+                        onClick = { onNewSpeciesKindChange(SpeciesKind.FLORA) },
+                        label = { Text(stringResource(R.string.filter_flora)) },
+                    )
+                    Button(
+                        onClick = onCreateSpecies,
+                        enabled = !editor.isSaving && editor.newSpeciesInput.isNotBlank(),
+                    ) {
+                        Text(stringResource(R.string.stock_new_species_add))
+                    }
+                }
+                editor.newSpeciesError?.let { error ->
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
 
                 OutlinedTextField(

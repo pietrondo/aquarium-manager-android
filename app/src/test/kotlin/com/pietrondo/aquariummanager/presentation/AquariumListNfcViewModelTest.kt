@@ -77,6 +77,45 @@ class AquariumListNfcViewModelTest {
     }
 
     @Test
+    fun identifyingATagOpensItsAquarium() = runTest {
+        val repo = FakeNfcRepository()
+        repo.addAquarium(reefId, "Reef")
+        repo.bind(reefId, tagId)
+        val vm = viewModel(repo)
+        runCurrent()
+
+        vm.startNfcIdentification()
+        runCurrent()
+        assertEquals(true, (vm.state.value as AquariumListState.Success).isNfcIdentifying)
+
+        vm.onNfcTagScanned(tagId)
+        runCurrent()
+
+        val state = vm.state.value as AquariumListState.Success
+        assertEquals(false, state.isNfcIdentifying)
+        assertEquals(reefId, state.identifiedAquariumId)
+        assertEquals(reefId, state.selectedAquariumId)
+        assertNull(state.nfcStatus)
+    }
+
+    @Test
+    fun identifyingAnUnknownTagReportsItAndOpensNothing() = runTest {
+        val repo = FakeNfcRepository()
+        repo.addAquarium(reefId, "Reef")
+        val vm = viewModel(repo)
+        runCurrent()
+
+        vm.startNfcIdentification()
+        vm.onNfcTagScanned("04ffffffffffffff")
+        runCurrent()
+
+        val state = vm.state.value as AquariumListState.Success
+        assertEquals(false, state.isNfcIdentifying)
+        assertNull(state.identifiedAquariumId)
+        assertEquals(NfcStatus.UnknownTag("04ffffffffffffff"), state.nfcStatus)
+    }
+
+    @Test
     fun armedAssignmentBindsTheTagToTheActiveAquarium() = runTest {
         val repo = FakeNfcRepository()
         repo.addAquarium(reefId, "Reef")

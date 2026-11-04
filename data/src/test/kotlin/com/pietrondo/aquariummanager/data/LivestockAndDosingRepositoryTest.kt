@@ -60,10 +60,11 @@ class LivestockAndDosingRepositoryTest {
         val faunaOnly = repo.observeSpeciesCatalog(SpeciesKind.FAUNA).first()
         val floraOnly = repo.observeSpeciesCatalog(SpeciesKind.FLORA).first()
 
-        assertEquals(6, allSpecies.size)
-        assertEquals(3, faunaOnly.size)
+        val catalog = CatalogJsonParser.loadDefaultCatalog()
+        assertEquals(catalog.species.size, allSpecies.size)
+        assertEquals(catalog.species.count { it.kind == SpeciesKind.FAUNA }, faunaOnly.size)
         assertTrue(faunaOnly.all { it.kind == SpeciesKind.FAUNA })
-        assertEquals(3, floraOnly.size)
+        assertEquals(catalog.species.count { it.kind == SpeciesKind.FLORA }, floraOnly.size)
         assertTrue(floraOnly.all { it.kind == SpeciesKind.FLORA })
 
         // Create custom fauna and flora species
@@ -156,9 +157,9 @@ class LivestockAndDosingRepositoryTest {
         val tankB = repo.createAquarium(AquariumDraft(name = "Beta Reef", netLitres = BigDecimal("90")))
 
         val species = repo.observeSpeciesCatalog(null).first()
-        val cherryShrimp = species.first { it.commonName == "Cherry Shrimp" }
-        val javaFern = species.first { it.commonName == "Java Fern" }
-        val neonTetra = species.first { it.commonName == "Neon Tetra" }
+        val cherryShrimp = species.first { it.commonName == "Gamberetto Cherry" }
+        val javaFern = species.first { it.commonName == "Felce di Giava" }
+        val neonTetra = species.first { it.commonName == "Neon" }
 
         val tIntro1 = Instant.parse("2026-10-01T09:00:00Z")
         val tIntro2 = Instant.parse("2026-10-05T14:00:00Z")

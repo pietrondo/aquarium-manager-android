@@ -60,6 +60,9 @@
     <string name="filter_flora">Flora</string>
     <string name="add_stock_entry">Add stock</string>
     <string name="add_species">Add species</string>
+<string name="stock_new_species_title">New species</string>
+<string name="stock_new_species_name">Common name</string>
+<string name="stock_new_species_add">Add and select</string>
     <string name="add_product">Add product</string>
     <string name="add_dosing_plan">Add dosing plan</string>
     <string name="log_adhoc_dose">Ad-hoc dose</string>
@@ -116,6 +119,8 @@
     <string name="nfc_title">NFC tags</string>
     <string name="nfc_explanation">Stick a tag on each aquarium. Touch a bound tag against the phone to open that aquarium, or assign a tag to the selected one.</string>
     <string name="nfc_assign_button">Assign NFC tag</string>
+<string name="nfc_identify_button">Identify aquarium</string>
+<string name="nfc_identifying_hint">Touch the tag against the phone to open its aquarium.</string>
     <string name="nfc_assigning_hint">Touch the tag against the phone to bind it to the selected aquarium.</string>
     <string name="nfc_cancel_assignment">Cancel</string>
     <string name="nfc_no_tags">No tag assigned to this aquarium yet.</string>

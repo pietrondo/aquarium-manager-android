@@ -467,6 +467,30 @@ class AquariumListViewModelTest {
     }
 
     @Test
+    fun aSpeciesCreatedFromTheStockEditorIsAddedAndSelected() = runTest {
+        val repo = fakeCrudRepository()
+        val tank = repo.createAquarium(AquariumDraft(name = "Nano", netLitres = BigDecimal("20")))
+        val vm = AquariumListViewModel(repo).also { store.put("stock-species", it) }
+        runCurrent()
+
+        vm.selectTab(AppTab.LIVESTOCK)
+        vm.selectAquarium(tank)
+        vm.openCreateStockEditor()
+        runCurrent()
+        val before = (vm.state.value as AquariumListState.Success).speciesCatalog.size
+
+        vm.updateNewSpeciesInput("Caridina multidentata")
+        vm.selectNewSpeciesKind(com.pietrondo.aquariummanager.domain.SpeciesKind.FAUNA)
+        vm.createSpeciesForStock()
+        runCurrent()
+
+        val state = vm.state.value as AquariumListState.Success
+        assertEquals(before + 1, state.speciesCatalog.size)
+        val created = state.speciesCatalog.first { it.commonName == "Caridina multidentata" }
+        assertEquals(created.id, state.stockEditorState?.selectedSpeciesId)
+    }
+
+    @Test
     fun speciesCatalogAndLivestockStockTrackingWithUnknownQuantityExitedVisibilityAndInputPreservation() = runTest {
         val repo = fakeCrudRepository()
         val tankA = repo.createAquarium(AquariumDraft(name = "Alpha Shrimp", netLitres = BigDecimal("30")))

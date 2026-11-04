@@ -79,38 +79,512 @@
     {
       "id": "00000000-0000-4000-8000-000000000201",
       "kind": "FAUNA",
-      "commonName": "Amano Shrimp",
+      "commonName": "Gamberetto Amano",
       "scientificName": "Caridina multidentata"
     },
     {
       "id": "00000000-0000-4000-8000-000000000202",
       "kind": "FAUNA",
-      "commonName": "Cherry Shrimp",
+      "commonName": "Gamberetto Cherry",
       "scientificName": "Neocaridina davidi"
     },
     {
       "id": "00000000-0000-4000-8000-000000000203",
       "kind": "FAUNA",
-      "commonName": "Neon Tetra",
+      "commonName": "Neon",
       "scientificName": "Paracheirodon innesi"
     },
     {
       "id": "00000000-0000-4000-8000-000000000204",
       "kind": "FLORA",
-      "commonName": "Java Fern",
+      "commonName": "Felce di Giava",
       "scientificName": "Microsorum pteropus"
     },
     {
       "id": "00000000-0000-4000-8000-000000000205",
       "kind": "FLORA",
-      "commonName": "Anubias Nana",
+      "commonName": "Anubias nana",
       "scientificName": "Anubias barteri var. nana"
     },
     {
       "id": "00000000-0000-4000-8000-000000000206",
       "kind": "FLORA",
-      "commonName": "Amazon Sword",
+      "commonName": "Spada amazzonica",
       "scientificName": "Echinodorus grisebachii"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000207",
+      "kind": "FAUNA",
+      "commonName": "Cardinale",
+      "scientificName": "Paracheirodon axelrodi"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000208",
+      "kind": "FAUNA",
+      "commonName": "Guppy",
+      "scientificName": "Poecilia reticulata"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000209",
+      "kind": "FAUNA",
+      "commonName": "Platy",
+      "scientificName": "Xiphophorus maculatus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000210",
+      "kind": "FAUNA",
+      "commonName": "Portaspada",
+      "scientificName": "Xiphophorus hellerii"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000211",
+      "kind": "FAUNA",
+      "commonName": "Molly",
+      "scientificName": "Poecilia sphenops"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000212",
+      "kind": "FAUNA",
+      "commonName": "Scalare",
+      "scientificName": "Pterophyllum scalare"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000213",
+      "kind": "FAUNA",
+      "commonName": "Discus",
+      "scientificName": "Symphysodon aequifasciatus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000214",
+      "kind": "FAUNA",
+      "commonName": "Ramirezi",
+      "scientificName": "Mikrogeophagus ramirezi"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000215",
+      "kind": "FAUNA",
+      "commonName": "Apistogramma cacatuoides",
+      "scientificName": "Apistogramma cacatuoides"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000216",
+      "kind": "FAUNA",
+      "commonName": "Corydoras bronzeo",
+      "scientificName": "Corydoras aeneus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000217",
+      "kind": "FAUNA",
+      "commonName": "Ancistrus",
+      "scientificName": "Ancistrus dolichopterus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000218",
+      "kind": "FAUNA",
+      "commonName": "Otocinclus",
+      "scientificName": "Otocinclus affinis"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000219",
+      "kind": "FAUNA",
+      "commonName": "Betta",
+      "scientificName": "Betta splendens"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000220",
+      "kind": "FAUNA",
+      "commonName": "Danio zebrato",
+      "scientificName": "Danio rerio"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000221",
+      "kind": "FAUNA",
+      "commonName": "Rasbora arlecchino",
+      "scientificName": "Trigonostigma heteromorpha"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000222",
+      "kind": "FAUNA",
+      "commonName": "Barbus tigre",
+      "scientificName": "Puntigrus tetrazona"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000223",
+      "kind": "FAUNA",
+      "commonName": "Barbus ciliegia",
+      "scientificName": "Puntius titteya"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000224",
+      "kind": "FAUNA",
+      "commonName": "Tetra rosso",
+      "scientificName": "Hemigrammus bleheri"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000225",
+      "kind": "FAUNA",
+      "commonName": "Tetra imperatore",
+      "scientificName": "Nematobrycon palmeri"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000226",
+      "kind": "FAUNA",
+      "commonName": "Pesce matita",
+      "scientificName": "Nannostomus beckfordi"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000227",
+      "kind": "FAUNA",
+      "commonName": "Pesce accetta",
+      "scientificName": "Carnegiella strigata"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000228",
+      "kind": "FAUNA",
+      "commonName": "Pesce rosso",
+      "scientificName": "Carassius auratus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000229",
+      "kind": "FAUNA",
+      "commonName": "Carassio",
+      "scientificName": "Carassius carassius"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000230",
+      "kind": "FAUNA",
+      "commonName": "Koi",
+      "scientificName": "Cyprinus rubrofuscus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000231",
+      "kind": "FAUNA",
+      "commonName": "Botia pagliaccio",
+      "scientificName": "Chromobotia macracanthus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000232",
+      "kind": "FAUNA",
+      "commonName": "Pesce elefante",
+      "scientificName": "Gnathonemus petersii"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000233",
+      "kind": "FAUNA",
+      "commonName": "Pesce coltello",
+      "scientificName": "Apteronotus albifrons"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000234",
+      "kind": "FAUNA",
+      "commonName": "Arowana argentato",
+      "scientificName": "Osteoglossum bicirrhosum"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000235",
+      "kind": "FAUNA",
+      "commonName": "Oscar",
+      "scientificName": "Astronotus ocellatus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000236",
+      "kind": "FAUNA",
+      "commonName": "Ciclide zebra",
+      "scientificName": "Amatitlania nigrofasciata"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000237",
+      "kind": "FAUNA",
+      "commonName": "Ciclide kribensis",
+      "scientificName": "Pelvicachromis pulcher"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000238",
+      "kind": "FAUNA",
+      "commonName": "Ciclide limone",
+      "scientificName": "Labidochromis caeruleus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000239",
+      "kind": "FAUNA",
+      "commonName": "Frontosa",
+      "scientificName": "Cyphotilapia frontosa"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000240",
+      "kind": "FAUNA",
+      "commonName": "Pesce palla nano",
+      "scientificName": "Carinotetraodon travancoricus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000241",
+      "kind": "FAUNA",
+      "commonName": "Gurami perla",
+      "scientificName": "Trichopodus leerii"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000242",
+      "kind": "FAUNA",
+      "commonName": "Gurami nano",
+      "scientificName": "Trichogaster lalius"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000243",
+      "kind": "FAUNA",
+      "commonName": "Pesce paradiso",
+      "scientificName": "Macropodus opercularis"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000244",
+      "kind": "FAUNA",
+      "commonName": "Melanotaenia",
+      "scientificName": "Melanotaenia praecox"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000245",
+      "kind": "FAUNA",
+      "commonName": "Iriatherina",
+      "scientificName": "Iriatherina werneri"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000246",
+      "kind": "FAUNA",
+      "commonName": "Lumaca Helena",
+      "scientificName": "Anentome helena"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000247",
+      "kind": "FAUNA",
+      "commonName": "Lumaca Neritina",
+      "scientificName": "Vittina natalensis"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000248",
+      "kind": "FAUNA",
+      "commonName": "Ampularia",
+      "scientificName": "Pomacea diffusa"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000249",
+      "kind": "FAUNA",
+      "commonName": "Planorbis",
+      "scientificName": "Planorbis planorbis"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000250",
+      "kind": "FAUNA",
+      "commonName": "Melanoides",
+      "scientificName": "Melanoides tuberculata"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000251",
+      "kind": "FAUNA",
+      "commonName": "Physa",
+      "scientificName": "Physella acuta"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000252",
+      "kind": "FAUNA",
+      "commonName": "Gamberetto Crystal Red",
+      "scientificName": "Caridina logemanni"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000253",
+      "kind": "FAUNA",
+      "commonName": "Gamberetto Bamboo",
+      "scientificName": "Atyopsis moluccensis"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000254",
+      "kind": "FLORA",
+      "commonName": "Cryptocoryne wendtii",
+      "scientificName": "Cryptocoryne wendtii"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000255",
+      "kind": "FLORA",
+      "commonName": "Vallisneria",
+      "scientificName": "Vallisneria spiralis"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000256",
+      "kind": "FLORA",
+      "commonName": "Bacopa",
+      "scientificName": "Bacopa caroliniana"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000257",
+      "kind": "FLORA",
+      "commonName": "Limnophila",
+      "scientificName": "Limnophila sessiliflora"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000258",
+      "kind": "FLORA",
+      "commonName": "Rotala",
+      "scientificName": "Rotala rotundifolia"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000259",
+      "kind": "FLORA",
+      "commonName": "Hygrophila",
+      "scientificName": "Hygrophila polysperma"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000260",
+      "kind": "FLORA",
+      "commonName": "Ludwigia",
+      "scientificName": "Ludwigia repens"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000261",
+      "kind": "FLORA",
+      "commonName": "Cabomba",
+      "scientificName": "Cabomba caroliniana"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000262",
+      "kind": "FLORA",
+      "commonName": "Egeria",
+      "scientificName": "Egeria densa"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000263",
+      "kind": "FLORA",
+      "commonName": "Ceratophyllum",
+      "scientificName": "Ceratophyllum demersum"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000264",
+      "kind": "FLORA",
+      "commonName": "Muschio di Giava",
+      "scientificName": "Taxiphyllum barbieri"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000265",
+      "kind": "FLORA",
+      "commonName": "Riccia",
+      "scientificName": "Riccia fluitans"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000266",
+      "kind": "FLORA",
+      "commonName": "Pellia",
+      "scientificName": "Monosolenium tenerum"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000267",
+      "kind": "FLORA",
+      "commonName": "Salvinia",
+      "scientificName": "Salvinia auriculata"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000268",
+      "kind": "FLORA",
+      "commonName": "Pistia",
+      "scientificName": "Pistia stratiotes"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000269",
+      "kind": "FLORA",
+      "commonName": "Lemna",
+      "scientificName": "Lemna minor"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000270",
+      "kind": "FLORA",
+      "commonName": "Eleocharis",
+      "scientificName": "Eleocharis acicularis"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000271",
+      "kind": "FLORA",
+      "commonName": "Marsilea",
+      "scientificName": "Marsilea hirsuta"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000272",
+      "kind": "FLORA",
+      "commonName": "Glossostigma",
+      "scientificName": "Glossostigma elatinoides"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000273",
+      "kind": "FLORA",
+      "commonName": "Hemianthus",
+      "scientificName": "Hemianthus callitrichoides"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000274",
+      "kind": "FLORA",
+      "commonName": "Staurogyne",
+      "scientificName": "Staurogyne repens"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000275",
+      "kind": "FLORA",
+      "commonName": "Pogostemon",
+      "scientificName": "Pogostemon helferi"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000276",
+      "kind": "FLORA",
+      "commonName": "Alternanthera",
+      "scientificName": "Alternanthera reineckii"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000277",
+      "kind": "FLORA",
+      "commonName": "Bucephalandra",
+      "scientificName": "Bucephalandra sp."
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000278",
+      "kind": "FLORA",
+      "commonName": "Aponogeton",
+      "scientificName": "Aponogeton crispus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000279",
+      "kind": "FLORA",
+      "commonName": "Ninfea",
+      "scientificName": "Nymphaea lotus"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000280",
+      "kind": "FLORA",
+      "commonName": "Sagittaria",
+      "scientificName": "Sagittaria subulata"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000281",
+      "kind": "FLORA",
+      "commonName": "Hydrocotyle",
+      "scientificName": "Hydrocotyle verticillata"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000282",
+      "kind": "FLORA",
+      "commonName": "Bolbitis",
+      "scientificName": "Bolbitis heudelotii"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000283",
+      "kind": "FLORA",
+      "commonName": "Limnobium",
+      "scientificName": "Limnobium laevigatum"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000284",
+      "kind": "FLORA",
+      "commonName": "Phyllanthus",
+      "scientificName": "Phyllanthus fluitans"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000285",
+      "kind": "FLORA",
+      "commonName": "Blyxa",
+      "scientificName": "Blyxa japonica"
     }
   ]
 }

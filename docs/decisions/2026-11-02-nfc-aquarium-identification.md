@@ -20,7 +20,8 @@ the NFC reader mode of the foreground activity.
   stickers that answer ISO 15693) while the app is in the
   foreground and reports the UID of the tag that is touched.
 - `AquariumListViewModel.onNfcTagScanned` either binds the tag (while the assignment
-  is armed) or resolves the bound aquarium and selects it.
+  is armed), opens the aquarium detail dialog (while the identification action is
+  armed), or resolves the bound aquarium and selects it.
 - The manifest declares `android.permission.NFC` and a non-required
   `android.hardware.nfc` feature: the app still installs on devices without NFC.
 

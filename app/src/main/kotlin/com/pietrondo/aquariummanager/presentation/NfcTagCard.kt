@@ -67,6 +67,8 @@ fun NfcTagCard(
     state: AquariumListState.Success,
     isNfcAvailable: Boolean,
     isNfcEnabled: Boolean,
+    onIdentifyTag: () -> Unit,
+    onCancelIdentification: () -> Unit,
     onAssignTag: () -> Unit,
     onCancelAssignment: () -> Unit,
     onUnbindTag: (String) -> Unit,
@@ -108,6 +110,19 @@ fun NfcTagCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
+            } else if (state.isNfcIdentifying) {
+                Text(
+                    text = stringResource(R.string.nfc_identifying_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Button(onClick = onCancelIdentification) {
+                        Text(stringResource(R.string.nfc_cancel_assignment))
+                    }
+                }
             } else if (state.isNfcAssigningTag) {
                 Text(
                     text = stringResource(R.string.nfc_assigning_hint),
@@ -126,19 +141,22 @@ fun NfcTagCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Button(onClick = onIdentifyTag) {
+                        Text(stringResource(R.string.nfc_identify_button))
+                    }
                     OutlinedButton(
                         onClick = onAssignTag,
                         enabled = state.activeAquarium != null,
                     ) {
                         Text(stringResource(R.string.nfc_assign_button))
                     }
-                    if (state.activeAquarium != null) {
-                        Text(
-                            text = activeName,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                }
+                if (state.activeAquarium != null) {
+                    Text(
+                        text = activeName,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 

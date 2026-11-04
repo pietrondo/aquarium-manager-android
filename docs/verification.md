@@ -231,6 +231,41 @@ NFC-A (0x01) + NFC-V (0x08) + no platform sounds (0x100); the previous build rep
 end-to-end read of a real NTAG215 is still unverified. The reader mode now really polls
 NFC-A, which is the protocol that tag answers.
 
+## Identify-aquarium action and Italian species catalog — 2026-11-04
+
+### Identify an aquarium by tag
+
+The NFC card gained an **"Identifica acquario"** action, separate from "Associa tag
+NFC": arming it makes the next scan open a read-only detail dialog for the aquarium the
+tag is bound to (name, volumes, profiles, notes, that aquarium's tags) with *Modifica*,
+*Test* and *Manutenzione* shortcuts. Scanning an unbound tag reports it as unknown and
+opens nothing. Selection also follows the identified aquarium, so the tabs stay in
+context. Covered by `identifyingATagOpensItsAquarium` and
+`identifyingAnUnknownTagReportsItAndOpensNothing`.
+
+`dumpsys nfc` still reports `flags: 265` after the change, so the added action did not
+regress the reader mode registration.
+
+### Species catalog in Italian
+
+The packaged catalog grows from **6 to 85 species** (50 fauna, 35 flora) with Italian
+common names and scientific names, seeded from the same versioned JSON
+(`default_catalog_v1.json`): freshwater and marine fish, shrimp, snails and the common
+aquarium plants. Taxonomy was cross-checked against *Acquariofilia Consapevole*
+(acquariofiliaconsapevole.it). The six ids already distributed to installed devices keep
+their original UUID so the additive seeding never duplicates or rewrites a row.
+
+A species missing from the catalog can now be created **from inside the "Aggiungi voce"
+dialog** (name plus Fauna/Flora toggle, then "Aggiungi e seleziona"): it is persisted and
+selected for the stock entry without leaving the flow. Covered by
+`aSpeciesCreatedFromTheStockEditorIsAddedAndSelected`.
+
+Verified: `.\gradlew.bat --no-daemon test lint assembleDebug` green (57 data tests,
+27 app tests, lint 0 errors), 17 Python tests pass. The APK could not be reinstalled on
+the Pixel 10a because USB debugging dropped to `unauthorized` at the end of the session;
+the on-device check of the new dialog and of the 85 entries is therefore **not claimed**.
+
+
 ## SAF failure modes on a real device (`aq-d34.5`) — 2026-11-03
 
 The SAF failure modes that only a device can show (unavailable provider, revoked grant, out of space, interrupted write, replacing an existing document) are now covered by instrumented tests against a real `ContentResolver`. The data module gained an `androidTest` provider double, `HostileBackupProvider`, that misbehaves on demand: it disappears (`openFile` returns null), loses its grant (throws `SecurityException`), runs out of space (`IOException`), or stores only the first bytes of an archive. The production `SafBackupDocumentGateway` runs unmodified against it.

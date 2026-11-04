@@ -77,12 +77,13 @@ class CatalogAndCrudRepositoryTest {
         assertEquals(DoseUnitDimension.MASS, unitDimensions["g"])
         assertEquals(DoseUnitDimension.COUNT, unitDimensions["drops"])
         assertEquals(DoseUnitDimension.COUNT, unitDimensions["tabs"])
-        assertEquals(6, catalog.species.size)
+        assertTrue(catalog.species.size > 6)
+        assertEquals(catalog.species.size, catalog.species.map { it.id }.toSet().size)
         assertTrue(
             catalog.species.any {
                 it.id == UUID.fromString("00000000-0000-4000-8000-000000000201") &&
                     it.kind == SpeciesKind.FAUNA &&
-                    it.commonName == "Amano Shrimp" &&
+                    it.commonName == "Gamberetto Amano" &&
                     it.scientificName == "Caridina multidentata"
             }
         )
@@ -165,8 +166,8 @@ class CatalogAndCrudRepositoryTest {
             } + SpeciesCatalogItem(
                 id = newSpeciesId,
                 kind = SpeciesKind.FLORA,
-                commonName = "Bucephalandra",
-                scientificName = "Bucephalandra sp.",
+                commonName = "Proserpinaca",
+                scientificName = "Proserpinaca palustris",
             ),
         )
 
@@ -179,7 +180,7 @@ class CatalogAndCrudRepositoryTest {
 
         val speciesById = dao.getAllSpecies().associateBy { it.id }
         assertEquals("User Customized Amano", speciesById[amanoId]?.commonName)
-        assertEquals("Bucephalandra", speciesById[newSpeciesId]?.commonName)
+        assertEquals("Proserpinaca", speciesById[newSpeciesId]?.commonName)
     }
 
     @Test
