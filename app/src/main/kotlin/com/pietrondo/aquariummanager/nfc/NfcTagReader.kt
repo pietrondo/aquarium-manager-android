@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.nfc.NfcAdapter
 import android.nfc.Tag
-import android.nfc.tech.NfcV
 import android.os.SystemClock
 import com.pietrondo.aquariummanager.domain.normalizeNfcTagId
 
@@ -32,7 +31,11 @@ class NfcTagReader(private val activity: Activity) {
         nfcAdapter.enableReaderMode(
             activity,
             { tag -> onTagProcessed(tag, onTag) },
-            NfcAdapter.FLAG_READER_NFC_V or NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
+            // NTAG21x stickers answer ISO/IEC 14443-3A (NFC-A), not NFC-V: the reader
+            // would never see them with FLAG_READER_NFC_V alone.
+            NfcAdapter.FLAG_READER_NFC_A or
+                NfcAdapter.FLAG_READER_NFC_V or
+                NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
             null,
         )
     }
@@ -61,10 +64,10 @@ class NfcTagReader(private val activity: Activity) {
         fun isEnabled(context: Context): Boolean =
             NfcAdapter.getDefaultAdapter(context)?.isEnabled == true
 
-        /** Lowercase hexadecimal UID of an NFC-V tag (NTAG21x family), or null. */
+        /** Lowercase hexadecimal hardware UID of a tag, or null. */
         fun readTagId(tag: Tag): String? {
-            // NfcV exposes its identifier only through the generic Tag handle.
-            if (NfcV.get(tag) == null) return null
+            // The UID is protocol independent: NTAG21x report it over NFC-A, other
+            // stickers over NFC-V, so no technology filter is needed here.
             val uid = tag.id ?: return null
             if (uid.isEmpty()) return null
             return try {

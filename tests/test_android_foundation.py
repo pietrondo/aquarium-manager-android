@@ -101,6 +101,14 @@ class AndroidFoundationTests(unittest.TestCase):
             self.assertEqual(['platforms;android-36', 'build-tools;35.0.0'],
                              output.read_text(encoding='utf-8').splitlines())
 
+    def test_nfc_reader_polls_nfc_a_because_ntag21x_are_type_2_tags(self):
+        # NTAG21x answer ISO/IEC 14443-3A (NFC-A), see the NXP NTAG213/215/216 datasheet
+        # section 8.2. With FLAG_READER_NFC_V alone the reader mode never discovers them.
+        reader = (ROOT / 'app/src/main/kotlin/com/pietrondo/aquariummanager/nfc/NfcTagReader.kt').read_text()
+        self.assertIn('NfcAdapter.FLAG_READER_NFC_A', reader)
+        # The UID must not be gated on a single technology, or a Type 2 tag is dropped.
+        self.assertNotIn('NfcV.get(tag)', reader)
+
     def test_wrapper_distribution_is_checksum_pinned(self):
         self.assertTrue((ROOT / "gradle/wrapper/gradle-wrapper.properties").is_file(), "Verified wrapper is missing")
         properties = (ROOT / 'gradle/wrapper/gradle-wrapper.properties').read_text()

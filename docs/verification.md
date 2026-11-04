@@ -202,6 +202,35 @@ Two layout defects visible on the device were fixed in the same pass: the "Esegu
 
 **Not claimed:** no physical tag was touched during this session, so the end-to-end read of a real sticker is not verified here; the UID decoding is covered by the unit tests and the reader-mode registration by `dumpsys`. An antivirus dialog flagged the debug APK as suspicious on the device — a known false positive for a debuggable build, not a finding about the release artifact.
 
+## NFC reader mode corrected to NFC-A — 2026-11-04
+
+The first version of the feature could never see the user's stickers. Two defects, both
+needed for a read:
+
+1. `enableReaderMode` requested **only** `FLAG_READER_NFC_V`. The NTAG215 is an
+   **ISO/IEC 14443-3A (NFC-A) / NFC Forum Type 2** tag — the NXP NTAG213/215/216
+   datasheet states *"The RF-interface is based on the ISO/IEC 14443 Type A standard"*
+   (§8.2) and never mentions ISO 15693. The diagnostic screenshot from NFC Tools on the
+   Pixel 10a showed `Tipo di tag: ISO 14443-3A` with `NfcA, MifareUltralight, Ndef`
+   and a 7-byte UID starting with `04` (the NXP manufacturer code, §8.5.1), so the tag
+   never reached the reader callback.
+2. `readTagId` returned null unless `NfcV.get(tag) != null`, so a tag discovered over
+   NFC-A was discarded even if it had arrived.
+
+The fix polls `FLAG_READER_NFC_A | FLAG_READER_NFC_V | FLAG_READER_NO_PLATFORM_SOUNDS`
+and reads the protocol-independent `Tag.id`. `tests/test_android_foundation.py` now
+guards both halves.
+
+Verified on the connected Pixel 10a (Android 17): `dumpsys nfc` reports
+`reader_mode_change { package_name: "com.pietrondo.aquariummanager" } flags: 265`, i.e.
+NFC-A (0x01) + NFC-V (0x08) + no platform sounds (0x100); the previous build reported
+`264`, without NFC-A. `.\gradlew.bat --no-daemon :app:testDebugUnitTest` and
+`:app:assembleDebug` succeed and the 17 Python tests pass.
+
+**Not claimed:** the sticker was not physically available in this session, so the
+end-to-end read of a real NTAG215 is still unverified. The reader mode now really polls
+NFC-A, which is the protocol that tag answers.
+
 ## SAF failure modes on a real device (`aq-d34.5`) — 2026-11-03
 
 The SAF failure modes that only a device can show (unavailable provider, revoked grant, out of space, interrupted write, replacing an existing document) are now covered by instrumented tests against a real `ContentResolver`. The data module gained an `androidTest` provider double, `HostileBackupProvider`, that misbehaves on demand: it disappears (`openFile` returns null), loses its grant (throws `SecurityException`), runs out of space (`IOException`), or stores only the first bytes of an archive. The production `SafBackupDocumentGateway` runs unmodified against it.

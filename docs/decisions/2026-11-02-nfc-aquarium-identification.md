@@ -2,9 +2,9 @@
 
 ## Problem
 
-The user bought NTAG215 NFC stickers (60 pieces, ISO 15693 / NFC-V, 504 bytes of
-user memory) and wants the app to identify an aquarium by touching its physical tag
-to the phone, without typing anything.
+The user bought NTAG215 NFC stickers (60 pieces, **ISO/IEC 14443-3A (NFC-A) / NFC
+Forum Type 2**, 504 bytes of user memory) and wants the app to identify an aquarium by
+touching its physical tag to the phone, without typing anything.
 
 ## Decision
 
@@ -16,7 +16,8 @@ the NFC reader mode of the foreground activity.
   is the primary key, so one tag can only point at one aquarium and re-binding moves
   it instead of duplicating it.
 - `NfcTagReader` (app module, `com.pietrondo.aquariummanager.nfc`) enables
-  `NfcAdapter.enableReaderMode` with `FLAG_READER_NFC_V` while the app is in the
+  `NfcAdapter.enableReaderMode` with `FLAG_READER_NFC_A` (plus `FLAG_READER_NFC_V` for
+  stickers that answer ISO 15693) while the app is in the
   foreground and reports the UID of the tag that is touched.
 - `AquariumListViewModel.onNfcTagScanned` either binds the tag (while the assignment
   is armed) or resolves the bound aquarium and selects it.
@@ -51,8 +52,8 @@ that the user would have to diagnose.
   scanned again — the stickers themselves are not lost.
 - The reader only runs while the app is in the foreground. There is no background
   tag dispatch and no lock-screen shortcut.
-- Only NFC-V tags (NTAG21x family) are supported; the reader mode is restricted to
-  `FLAG_READER_NFC_V`.
+- The reader accepts any tag UID and does not require a specific technology: the
+  NTAG21x family answers NFC-A, while other stickers may answer NFC-V.
 - The same tag is reported once every two seconds, so holding the phone on a sticker
   does not spam the state.
 
