@@ -273,7 +273,7 @@ The device acceptance found a real defect: the automatic backup had stopped taki
 
 **Fix.** A document that is gone is now reported as `NOT_FOUND` (the query result is inspected and the provider's "missing file" exceptions are recognised), a revoked grant stays `FAILED` (the file may still exist), and the generations that *were* removed leave the tracked list even when another removal failed. Three JVM tests cover the three outcomes.
 
-Executed verification for the whole change: `python -m unittest discover -s tests -v` → **17 passed**; `.\gradlew.bat --no-daemon test lint assembleDebug` → **BUILD SUCCESSFUL in 3m 42s**, JUnit XML **198 variant executions / 114 unique Kotlin tests**, zero failures or errors, lint **0 errors / 119 warnings**, debug APK **13,828,558 bytes**.
+Executed verification for the whole change: `python -m unittest discover -s tests -v` → **17 passed**; `.\gradlew.bat --no-daemon test lint assembleDebug` → **BUILD SUCCESSFUL in 3m 42s**, JUnit XML **198 variant executions / 114 unique Kotlin tests**, zero failures or errors, lint **0 errors / 119 warnings**, debug APK **13,828,558 bytes**. Hosted CI [run 41813421067](https://github.com/pietrondo/aquarium-manager-android/actions/runs/41813421067) passed for the exact commit, fresh checkout with a restored Gradle cache.
 
 **Verified on the Pixel 10a (Android 17) after reinstalling the patched build:**
 
