@@ -242,4 +242,24 @@
     <string name="nfc_status_unknown">Il tag %1$s non è associato a nessun acquario.</string>
     <string name="nfc_assign_now_to">Associalo a %1$s</string>
     <string name="nfc_status_no_aquarium">Seleziona un acquario prima di associare un tag.</string>
+    <string name="nfc_create_aquarium_with_tag">Crea un acquario con questo tag</string>
+    <string name="nfc_identified_title">Acquario identificato</string>
+    <string name="nfc_quick_actions_title">Azioni rapide</string>
+    <string name="nfc_action_animals">Animali</string>
+    <string name="nfc_action_plants">Piante</string>
+    <string name="nfc_action_water_test">Test acqua</string>
+    <string name="nfc_action_food">Cibo e dosaggi</string>
+    <string name="nfc_action_maintenance">Manutenzione</string>
+    <string name="species_search_label">Cerca per nome comune o latino</string>
+    <string name="species_search_empty">Nessuna specie corrisponde</string>
+    <string name="species_search_empty_hint">Prova un altro nome, oppure aggiungi la specie qui sotto.</string>
+    <string name="species_subspecies_of">Sottospecie di %1$s</string>
+    <string name="species_variety_of">Varietà di %1$s</string>
+    <string name="section_breeding">Riproduzione</string>
+    <string name="breeding_toggle">Animali in riproduzione</string>
+    <string name="breeding_toggle_hint">Attiva per registrare il periodo di riproduzione e le note</string>
+    <string name="field_breeding_since">In riproduzione dal (AAAA-MM-GG)</string>
+    <string name="field_breeding_notes">Note particolari (facoltative)</string>
+    <string name="breeding_badge">Riproduzione in corso</string>
+    <string name="breeding_badge_since">In riproduzione dal %1$s</string>
 </resources>

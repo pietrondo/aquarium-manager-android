@@ -17,6 +17,37 @@ class CatalogAndAquariumDraftTest {
             AquariumDraft(name = "Tank", notes = "x".repeat(MAX_TEXT_FIELD_LENGTH + 1))
         }
     }
+
+    @Test
+    fun anAquariumCanRecordItsBreedingPeriod() {
+        val since = java.time.Instant.parse("2026-11-01T00:00:00Z")
+        val draft = AquariumDraft(
+            name = "Betta",
+            breedingSince = since,
+            breedingNotes = "  Separate the male  ",
+        )
+        assertEquals(since, draft.breedingSince)
+        assertEquals("  Separate the male  ", draft.breedingNotes)
+
+        // Not breeding is the default.
+        val idle = AquariumDraft(name = "Community")
+        assertEquals(null, idle.breedingSince)
+        assertEquals(null, idle.breedingNotes)
+    }
+
+    @Test
+    fun breedingNotesWithoutABreedingStartAreRejected() {
+        // A note without the breeding flag would be invisible in the UI, so it is refused.
+        assertThrows(IllegalArgumentException::class.java) {
+            AquariumDraft(name = "Tank", breedingNotes = "Separate the male")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            validateBreeding(null, "Separate the male")
+        }
+        // Blank notes are allowed with no breeding period.
+        validateBreeding(null, null)
+        validateBreeding(null, "   ")
+    }
     private val profilePlanted = AquariumProfile(UUID.fromString("00000000-0000-4000-8000-000000000101"), "Planted")
     private val profileShrimp = AquariumProfile(UUID.fromString("00000000-0000-4000-8000-000000000103"), "Shrimp")
     private val maintWaterChange = MaintenanceTypeCatalogItem("WATER_CHANGE", "Water change")

@@ -10,8 +10,8 @@ import java.time.ZoneId
 import java.util.UUID
 
 const val BACKUP_FORMAT_ID = "aquarium-manager-library"
-const val CURRENT_BACKUP_FORMAT_VERSION = 2
-val SUPPORTED_BACKUP_FORMAT_VERSIONS: Set<Int> = setOf(0, 1, 2)
+const val CURRENT_BACKUP_FORMAT_VERSION = 3
+val SUPPORTED_BACKUP_FORMAT_VERSIONS: Set<Int> = setOf(0, 1, 2, 3)
 
 const val MAX_MANIFEST_BYTES = 64 * 1024
 const val MAX_LIBRARY_BYTES = 50 * 1024 * 1024
@@ -87,12 +87,15 @@ data class AquariumSnapshotRecord(
     val grossLitres: BigDecimal? = null,
     val notes: String? = null,
     val createdAt: Instant,
+    val breedingSince: Instant? = null,
+    val breedingNotes: String? = null,
 ) {
     init {
         validateNonBlank(name, "Aquarium name")
         requireBoundedLength(name, "Aquarium name")
         requireBoundedLength(notes, "Aquarium notes")
         validateAquariumVolumes(netLitres, grossLitres)
+        validateBreeding(breedingSince, breedingNotes)
     }
 }
 

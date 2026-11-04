@@ -91,7 +91,16 @@ object LibraryBackupCodec {
         "maintenanceTypes",
     )
 
-    private val AQUARIUM_KEYS = setOf("id", "name", "netLitres", "grossLitres", "notes", "createdAt")
+    private val AQUARIUM_KEYS = setOf(
+        "id",
+        "name",
+        "netLitres",
+        "grossLitres",
+        "notes",
+        "createdAt",
+        "breedingSince",
+        "breedingNotes",
+    )
     private val PROFILE_KEYS = setOf("id", "name")
     private val PROFILE_LINK_KEYS = setOf("aquariumId", "profileId")
     private val MEASUREMENT_KEYS = setOf(
@@ -165,6 +174,8 @@ object LibraryBackupCodec {
                     .put("grossLitres", item.grossLitres.toJsonDecimalOrNull())
                     .put("notes", item.notes ?: JSONObject.NULL)
                     .put("createdAt", item.createdAt.toString())
+                    .put("breedingSince", item.breedingSince?.toString() ?: JSONObject.NULL)
+                    .put("breedingNotes", item.breedingNotes ?: JSONObject.NULL)
             )
         }
         root.put("aquariums", aquariumsArr)
@@ -409,8 +420,9 @@ object LibraryBackupCodec {
         }
 
         val root = when (formatVersion) {
-            0 -> migrateV1LibraryJsonToV2(migrateV0LibraryJsonToV1(rawRoot))
-            1 -> migrateV1LibraryJsonToV2(rawRoot)
+            0 -> migrateV2LibraryJsonToV3(migrateV1LibraryJsonToV2(migrateV0LibraryJsonToV1(rawRoot)))
+            1 -> migrateV2LibraryJsonToV3(migrateV1LibraryJsonToV2(rawRoot))
+            2 -> migrateV2LibraryJsonToV3(rawRoot)
             else -> rawRoot
         }
 
@@ -418,6 +430,7 @@ object LibraryBackupCodec {
 
         val aquariums = root.requireArray("aquariums").mapObjects("aquariums") { obj, idx ->
             obj.requireAllowedKeys(AQUARIUM_KEYS, setOf("id", "name", "createdAt"), "aquariums[$idx]")
+            val breedingSinceRaw = obj.optNullableString("breedingSince")
             AquariumSnapshotRecord(
                 id = parseCanonicalUuid(obj.requireStrictString("id", "aquariums[$idx]"), "aquariums[$idx].id"),
                 name = obj.requireStrictString("name", "aquariums[$idx]"),
@@ -425,6 +438,10 @@ object LibraryBackupCodec {
                 grossLitres = obj.optStrictDecimal("grossLitres", "aquariums[$idx].grossLitres"),
                 notes = obj.optNullableString("notes"),
                 createdAt = parseInstant(obj.requireStrictString("createdAt", "aquariums[$idx]"), "aquariums[$idx].createdAt"),
+                breedingSince = breedingSinceRaw?.let {
+                    parseInstant(it, "aquariums[$idx].breedingSince")
+                },
+                breedingNotes = obj.optNullableString("breedingNotes"),
             )
         }
 
@@ -629,6 +646,22 @@ object LibraryBackupCodec {
         val migrated = JSONObject(rawRoot.toString())
         if (!migrated.has("maintenanceTypes")) {
             migrated.put("maintenanceTypes", JSONArray())
+        }
+        return migrated
+    }
+
+    /** Format v3 added the aquarium breeding fields; older archives were never breeding. */
+    private fun migrateV2LibraryJsonToV3(rawRoot: JSONObject): JSONObject {
+        val migrated = JSONObject(rawRoot.toString())
+        val aquariums = migrated.optJSONArray("aquariums") ?: return migrated
+        for (i in 0 until aquariums.length()) {
+            val aquarium = aquariums.optJSONObject(i) ?: continue
+            if (!aquarium.has("breedingSince")) {
+                aquarium.put("breedingSince", JSONObject.NULL)
+            }
+            if (!aquarium.has("breedingNotes")) {
+                aquarium.put("breedingNotes", JSONObject.NULL)
+            }
         }
         return migrated
     }

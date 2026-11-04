@@ -156,8 +156,14 @@ data class AquariumDetail(
     val notes: String?,
     val createdAt: Instant,
     val profiles: List<AquariumProfile>,
+    /** Start of the breeding period, or null when the aquarium is not breeding. */
+    val breedingSince: Instant? = null,
+    val breedingNotes: String? = null,
 ) {
     fun toSummary(): AquariumSummary = AquariumSummary(id = id, name = name)
+
+    val isBreeding: Boolean
+        get() = breedingSince != null
 }
 
 data class AquariumDraft(
@@ -166,12 +172,26 @@ data class AquariumDraft(
     val grossLitres: BigDecimal? = null,
     val notes: String? = null,
     val profileIds: Set<UUID> = emptySet(),
+    val breedingSince: Instant? = null,
+    val breedingNotes: String? = null,
 ) {
     init {
         validateNonBlank(name, "Aquarium name")
         validateTextLength(name, "Aquarium name")
         validateOptionalTextLength(notes, "Aquarium notes")
         validateAquariumVolumes(netLitres, grossLitres)
+        validateBreeding(breedingSince, breedingNotes)
+    }
+}
+
+/**
+ * Breeding notes only make sense while a breeding period is open: an aquarium without
+ * a start date cannot carry a breeding note.
+ */
+fun validateBreeding(breedingSince: Instant?, breedingNotes: String?) {
+    validateOptionalTextLength(breedingNotes, "Breeding notes")
+    require(breedingSince != null || breedingNotes.isNullOrBlank()) {
+        "Breeding notes need a breeding start date"
     }
 }
 

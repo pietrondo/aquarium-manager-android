@@ -249,6 +249,8 @@ class RoomAquariumRepository(
             grossLitres = draft.grossLitres,
             notes = normalizedNotes,
             createdAt = clock(),
+            breedingSince = draft.breedingSince,
+            breedingNotes = normalizedBreedingNotes(draft),
         )
         dao.insertAquariumWithProfiles(entity, draft.profileIds)
         id
@@ -265,8 +267,18 @@ class RoomAquariumRepository(
             grossLitres = draft.grossLitres,
             notes = normalizedNotes,
             profileIds = draft.profileIds,
+            breedingSince = draft.breedingSince,
+            breedingNotes = normalizedBreedingNotes(draft),
         )
     }
+
+    /** Breeding notes are trimmed and dropped while the breeding period is closed. */
+    private fun normalizedBreedingNotes(draft: AquariumDraft): String? =
+        if (draft.breedingSince == null) {
+            null
+        } else {
+            draft.breedingNotes?.trim()?.takeIf { it.isNotEmpty() }
+        }
 
     override suspend fun deleteAquarium(id: UUID) = operationMutex.withLock {
         dao.deleteAquariumWithHistories(id)

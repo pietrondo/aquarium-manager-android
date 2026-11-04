@@ -604,6 +604,144 @@
       "kind": "FLORA",
       "commonName": "Blyxa",
       "scientificName": "Blyxa japonica"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000386",
+      "kind": "FAUNA",
+      "commonName": "Betta Imbellis",
+      "scientificName": "Betta imbellis"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000387",
+      "kind": "FAUNA",
+      "commonName": "Betta Macrostoma",
+      "scientificName": "Betta macrostoma"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000388",
+      "kind": "FAUNA",
+      "commonName": "Betta Mahachai",
+      "scientificName": "Betta mahachai"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000389",
+      "kind": "FAUNA",
+      "commonName": "Betta Ocellata",
+      "scientificName": "Betta ocellata"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000390",
+      "kind": "FAUNA",
+      "commonName": "Betta Pugnax",
+      "scientificName": "Betta pugnax"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000391",
+      "kind": "FAUNA",
+      "commonName": "Betta Andreamartini",
+      "scientificName": "Betta andreamartini"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000392",
+      "kind": "FAUNA",
+      "commonName": "Betta Bellica",
+      "scientificName": "Betta bellica"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000393",
+      "kind": "FAUNA",
+      "commonName": "Betta Coccinea",
+      "scientificName": "Betta coccinea"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000394",
+      "kind": "FAUNA",
+      "commonName": "Betta Pallida",
+      "scientificName": "Betta pallida"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000395",
+      "kind": "FAUNA",
+      "commonName": "Betta Unimaculata",
+      "scientificName": "Betta unimaculata"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000396",
+      "kind": "FAUNA",
+      "commonName": "Betta Vittata",
+      "scientificName": "Betta vittata"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000397",
+      "kind": "FAUNA",
+      "commonName": "Betta Albiventer",
+      "scientificName": "Betta albiventer"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000398",
+      "kind": "FAUNA",
+      "commonName": "Betta Plakat",
+      "scientificName": "Betta splendens 'Plakat'"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000399",
+      "kind": "FAUNA",
+      "commonName": "Betta Halfmoon",
+      "scientificName": "Betta splendens 'Halfmoon'"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000400",
+      "kind": "FAUNA",
+      "commonName": "Betta Velo",
+      "scientificName": "Betta splendens 'Veil'"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000401",
+      "kind": "FAUNA",
+      "commonName": "Betta Koi",
+      "scientificName": "Betta splendens 'Koi'"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000402",
+      "kind": "FAUNA",
+      "commonName": "Betta Galaxy",
+      "scientificName": "Betta splendens 'Galaxy'"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000403",
+      "kind": "FAUNA",
+      "commonName": "Betta Drago",
+      "scientificName": "Betta splendens 'Dragon'"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000404",
+      "kind": "FAUNA",
+      "commonName": "Betta Nemo",
+      "scientificName": "Betta splendens 'Nemo'"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000405",
+      "kind": "FAUNA",
+      "commonName": "Betta Avataar",
+      "scientificName": "Betta splendens 'Avataar'"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000406",
+      "kind": "FAUNA",
+      "commonName": "Rasbora arlecchino di Sumatra",
+      "scientificName": "Trigonostigma heteromorpha sumatrana"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000409",
+      "kind": "FAUNA",
+      "commonName": "Apistogramma cacatuoides doppio rosso",
+      "scientificName": "Apistogramma cacatuoides 'Double Red'"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000410",
+      "kind": "FAUNA",
+      "commonName": "Corydoras nano",
+      "scientificName": "Corydoras pygmaeus"
     }
   ]
 }

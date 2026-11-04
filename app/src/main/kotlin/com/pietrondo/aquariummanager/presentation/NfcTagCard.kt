@@ -72,6 +72,7 @@ fun NfcTagCard(
     onAssignTag: () -> Unit,
     onCancelAssignment: () -> Unit,
     onUnbindTag: (String) -> Unit,
+    onCreateAquariumWithTag: (String) -> Unit,
     onDismissStatus: () -> Unit,
 ) {
     val activeName = state.activeAquarium?.name.orEmpty()
@@ -207,14 +208,19 @@ fun NfcTagCard(
                                 Text(stringResource(R.string.dismiss))
                             }
                         }
-                        if (status is NfcStatus.UnknownTag && activeName.isNotEmpty()) {
-                            TextButton(onClick = onAssignTag) {
-                                Text(
-                                    stringResource(
-                                        R.string.nfc_assign_now_to,
-                                        activeName,
-                                    ),
-                                )
+                        if (status is NfcStatus.UnknownTag) {
+                            if (activeName.isNotEmpty()) {
+                                TextButton(onClick = onAssignTag) {
+                                    Text(
+                                        stringResource(
+                                            R.string.nfc_assign_now_to,
+                                            activeName,
+                                        ),
+                                    )
+                                }
+                            }
+                            TextButton(onClick = { onCreateAquariumWithTag(status.tagId) }) {
+                                Text(stringResource(R.string.nfc_create_aquarium_with_tag))
                             }
                         }
                     }

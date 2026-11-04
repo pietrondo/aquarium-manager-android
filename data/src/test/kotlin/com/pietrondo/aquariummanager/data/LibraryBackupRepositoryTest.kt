@@ -44,6 +44,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -254,9 +255,21 @@ class LibraryBackupRepositoryTest {
             LibraryBackupCodec.parseLibraryJson(pollutedJson, 1, catalog)
         }
 
-        // Reject future formatVersion = 3 in manifest JSON
+        // Format v2 predates the breeding fields: they migrate to "not breeding".
+        val v2Json = JSONObject(libraryJsonText).apply {
+            for (i in 0 until getJSONArray("aquariums").length()) {
+                val aquarium = getJSONArray("aquariums").getJSONObject(i)
+                aquarium.remove("breedingSince")
+                aquarium.remove("breedingNotes")
+            }
+        }.toString().toByteArray(Charsets.UTF_8)
+        val migratedFromV2 = LibraryBackupCodec.parseLibraryJson(v2Json, 2, catalog)
+        assertNull(migratedFromV2.aquariums.single().breedingSince)
+        assertNull(migratedFromV2.aquariums.single().breedingNotes)
+
+        // Reject future formatVersion = 4 in manifest JSON
         val futureManifestBytes = JSONObject(manifestBytes.toString(Charsets.UTF_8)).apply {
-            put("formatVersion", 3)
+            put("formatVersion", 4)
         }.toString().toByteArray(Charsets.UTF_8)
         assertThrowsIllegalArgument {
             LibraryBackupCodec.parseManifestJson(futureManifestBytes)
@@ -270,7 +283,10 @@ class LibraryBackupRepositoryTest {
         val exportUri = "content://fake/manual/backup-1.zip"
         val result = repository.exportBackupToUri(exportUri)
         assertEquals(exportUri, result.destinationUri)
-        assertEquals(2, result.manifest.formatVersion)
+        assertEquals(
+            com.pietrondo.aquariummanager.domain.CURRENT_BACKUP_FORMAT_VERSION,
+            result.manifest.formatVersion,
+        )
         assertTrue(fakeGateway.exists(exportUri))
 
         val preview = repository.inspectBackupUri(exportUri)

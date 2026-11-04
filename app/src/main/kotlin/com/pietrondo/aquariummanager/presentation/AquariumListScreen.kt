@@ -61,6 +61,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
@@ -88,8 +89,10 @@ import com.pietrondo.aquariummanager.domain.OFFLINE_PRIVACY_SUMMARY
 import com.pietrondo.aquariummanager.domain.ParameterTrendDirection
 import com.pietrondo.aquariummanager.domain.ParameterTrendSummary
 import com.pietrondo.aquariummanager.domain.ProductRecord
+import com.pietrondo.aquariummanager.domain.SpeciesCatalogEntry
 import com.pietrondo.aquariummanager.domain.SpeciesCatalogItem
 import com.pietrondo.aquariummanager.domain.SpeciesKind
+import com.pietrondo.aquariummanager.domain.SpeciesRank
 import com.pietrondo.aquariummanager.domain.StockEntryRecord
 import com.pietrondo.aquariummanager.domain.UNENCRYPTED_BACKUP_DISCLOSURE
 import com.pietrondo.aquariummanager.domain.WaterParameter
@@ -445,6 +448,7 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                                 onAssignNfcTag = viewModel::startNfcTagAssignment,
                                 onCancelNfcAssignment = viewModel::cancelNfcTagAssignment,
                                 onUnbindNfcTag = viewModel::unbindNfcTag,
+                                onCreateAquariumWithNfcTag = viewModel::createAquariumFromNfcTag,
                                 onDismissNfcStatus = viewModel::dismissNfcStatus,
                             )
                         }
@@ -486,6 +490,7 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                                 onSelectAquarium = viewModel::selectAquarium,
                                 onSelectSection = viewModel::selectLivestockSection,
                                 onSelectKindFilter = viewModel::setSpeciesKindFilter,
+                                onSpeciesSearchQueryChange = viewModel::updateSpeciesSearchQuery,
                                 onAddStockEntry = viewModel::openCreateStockEditor,
                                 onEditStockEntry = viewModel::openEditStockEditor,
                                 onMarkStockExited = viewModel::markStockExited,
@@ -555,6 +560,9 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                             onToggleProfile = viewModel::toggleProfileSelection,
                             onNewProfileNameChange = viewModel::updateNewProfileNameInput,
                             onAddCustomProfile = viewModel::addCustomProfile,
+                            onBreedingChange = viewModel::setBreeding,
+                            onBreedingSinceChange = viewModel::updateBreedingSinceInput,
+                            onBreedingNotesChange = viewModel::updateBreedingNotesInput,
                             onSave = viewModel::saveAquarium,
                         )
                     }
@@ -611,9 +619,11 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                         StockEditorDialog(
                             editor = stockEditor,
                             aquariumName = current.activeAquarium?.name.orEmpty(),
-                            speciesCatalog = current.speciesCatalog,
+                            speciesEntries = current.stockEditorSpeciesEntries,
                             onDismiss = viewModel::closeStockEditor,
                             onSelectSpecies = viewModel::selectStockSpecies,
+                            onSpeciesQueryChange = viewModel::updateStockSpeciesQuery,
+                            onSpeciesKindFilterChange = viewModel::selectStockSpeciesKind,
                             onNewSpeciesChange = viewModel::updateNewSpeciesInput,
                             onNewSpeciesKindChange = viewModel::selectNewSpeciesKind,
                             onCreateSpecies = viewModel::createSpeciesForStock,
@@ -631,18 +641,7 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                             IdentifiedAquariumDialog(
                                 aquarium = identified,
                                 tags = current.nfcTagBindings.filter { it.aquariumId == identifiedId },
-                                onEdit = {
-                                    viewModel.dismissIdentifiedAquarium()
-                                    viewModel.openEditEditor(identifiedId)
-                                },
-                                onOpenWaterTests = {
-                                    viewModel.dismissIdentifiedAquarium()
-                                    viewModel.selectTab(AppTab.TESTS)
-                                },
-                                onOpenMaintenance = {
-                                    viewModel.dismissIdentifiedAquarium()
-                                    viewModel.selectTab(AppTab.MAINTENANCE)
-                                },
+                                onAction = viewModel::runNfcQuickAction,
                                 onDismiss = viewModel::dismissIdentifiedAquarium,
                             )
                         }
@@ -696,15 +695,6 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
 }
 
 @Composable
-private fun PixelIcon(resId: Int, size: Dp = 24.dp) {
-    Image(
-        painter = painterResource(resId),
-        contentDescription = null,
-        modifier = Modifier.size(size),
-    )
-}
-
-@Composable
 private fun AquariumsOverviewTab(
     state: AquariumListState.Success,
     onCreateFirst: () -> Unit,
@@ -720,32 +710,31 @@ private fun AquariumsOverviewTab(
     onAssignNfcTag: () -> Unit,
     onCancelNfcAssignment: () -> Unit,
     onUnbindNfcTag: (String) -> Unit,
+    onCreateAquariumWithNfcTag: (String) -> Unit,
     onDismissNfcStatus: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PixelIcon(R.drawable.ic_aquariums)
-                Text(
-                    text = stringResource(R.string.aquariums_title),
-                    modifier = Modifier.semantics { heading() },
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Text(
-                text = stringResource(R.string.aquariums_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SectionHeader(
+            iconRes = R.drawable.ic_aquariums,
+            title = stringResource(R.string.aquariums_title),
+            subtitle = stringResource(R.string.aquariums_subtitle),
+        )
 
         if (state.aquariumDetails.isEmpty()) {
             EmptyAquariumCard(onCreateFirst = onCreateFirst)
+            // The NFC card stays reachable: a fresh tag can create the first aquarium.
+            NfcTagCard(
+                state = state,
+                isNfcAvailable = isNfcAvailable,
+                isNfcEnabled = isNfcEnabled,
+                onIdentifyTag = onIdentifyNfcTag,
+                onCancelIdentification = onCancelNfcIdentification,
+                onAssignTag = onAssignNfcTag,
+                onCancelAssignment = onCancelNfcAssignment,
+                onUnbindTag = onUnbindNfcTag,
+                onCreateAquariumWithTag = onCreateAquariumWithNfcTag,
+                onDismissStatus = onDismissNfcStatus,
+            )
         } else {
             NfcTagCard(
                 state = state,
@@ -756,6 +745,7 @@ private fun AquariumsOverviewTab(
                 onAssignTag = onAssignNfcTag,
                 onCancelAssignment = onCancelNfcAssignment,
                 onUnbindTag = onUnbindNfcTag,
+                onCreateAquariumWithTag = onCreateAquariumWithNfcTag,
                 onDismissStatus = onDismissNfcStatus,
             )
             LazyColumn(
@@ -836,26 +826,11 @@ private fun WaterTestsTab(
     onDeleteMeasurement: (UUID) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PixelIcon(R.drawable.ic_temperature)
-                Text(
-                    text = stringResource(R.string.tests_title),
-                    modifier = Modifier.semantics { heading() },
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Text(
-                text = stringResource(R.string.tests_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SectionHeader(
+            iconRes = R.drawable.ic_temperature,
+            title = stringResource(R.string.tests_title),
+            subtitle = stringResource(R.string.tests_subtitle),
+        )
 
         val activeAquarium = state.activeAquarium
         if (activeAquarium == null) {
@@ -1203,26 +1178,11 @@ private fun MaintenanceTab(
     onDeleteMaintenance: (UUID) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PixelIcon(R.drawable.ic_water_change)
-                Text(
-                    text = stringResource(R.string.maintenance_title),
-                    modifier = Modifier.semantics { heading() },
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Text(
-                text = stringResource(R.string.maintenance_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SectionHeader(
+            iconRes = R.drawable.ic_water_change,
+            title = stringResource(R.string.maintenance_title),
+            subtitle = stringResource(R.string.maintenance_subtitle),
+        )
 
         val activeAquarium = state.activeAquarium
         if (activeAquarium == null) {
@@ -1462,6 +1422,10 @@ private fun AquariumDetailCard(
                 }
             }
 
+            if (aquarium.isBreeding) {
+                BreedingBadge(since = aquarium.breedingSince, notes = aquarium.breedingNotes)
+            }
+
             aquarium.notes?.let { notes ->
                 Text(
                     text = notes,
@@ -1506,18 +1470,33 @@ private fun AquariumDetailCard(
 private fun IdentifiedAquariumDialog(
     aquarium: AquariumDetail,
     tags: List<NfcTagBinding>,
-    onEdit: () -> Unit,
-    onOpenWaterTests: () -> Unit,
-    onOpenMaintenance: () -> Unit,
+    onAction: (NfcQuickAction) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                text = aquarium.name,
-                fontWeight = FontWeight.Bold,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(R.string.nfc_identified_title),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = aquarium.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = formatVolumesBadge(
+                        net = aquarium.netLitres,
+                        gross = aquarium.grossLitres,
+                        unknownLabel = stringResource(R.string.volume_unknown),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         },
         text = {
             Column(
@@ -1526,22 +1505,13 @@ private fun IdentifiedAquariumDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text(
-                    text = formatVolumesBadge(
-                        net = aquarium.netLitres,
-                        gross = aquarium.grossLitres,
-                        unknownLabel = stringResource(R.string.volume_unknown),
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 if (aquarium.profiles.isNotEmpty()) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         aquarium.profiles.forEach { profile ->
-                            AssistChip(onClick = onEdit, label = { Text(profile.name) })
+                            AssistChip(onClick = onDismiss, label = { Text(profile.name) })
                         }
                     }
                 }
@@ -1552,6 +1522,51 @@ private fun IdentifiedAquariumDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+
+                if (aquarium.isBreeding) {
+                    BreedingBadge(
+                        since = aquarium.breedingSince,
+                        notes = aquarium.breedingNotes,
+                    )
+                }
+
+                Text(
+                    text = stringResource(R.string.nfc_quick_actions_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+
+                QuickActionButton(
+                    icon = R.drawable.ic_livestock,
+                    label = stringResource(R.string.nfc_action_animals),
+                    onClick = { onAction(NfcQuickAction.ANIMALS) },
+                )
+                QuickActionButton(
+                    icon = R.drawable.ic_plant,
+                    label = stringResource(R.string.nfc_action_plants),
+                    onClick = { onAction(NfcQuickAction.PLANTS) },
+                )
+                QuickActionButton(
+                    icon = R.drawable.ic_tests,
+                    label = stringResource(R.string.nfc_action_water_test),
+                    onClick = { onAction(NfcQuickAction.WATER_TEST) },
+                )
+                QuickActionButton(
+                    icon = R.drawable.ic_dose,
+                    label = stringResource(R.string.nfc_action_food),
+                    onClick = { onAction(NfcQuickAction.FOOD) },
+                )
+                QuickActionButton(
+                    icon = R.drawable.ic_maintenance,
+                    label = stringResource(R.string.nfc_action_maintenance),
+                    onClick = { onAction(NfcQuickAction.MAINTENANCE) },
+                )
+                QuickActionButton(
+                    icon = R.drawable.ic_aquariums,
+                    label = stringResource(R.string.edit_aquarium),
+                    onClick = { onAction(NfcQuickAction.EDIT_AQUARIUM) },
+                )
+
                 Text(
                     text = stringResource(R.string.nfc_bound_count, tags.size),
                     style = MaterialTheme.typography.labelMedium,
@@ -1566,29 +1581,42 @@ private fun IdentifiedAquariumDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onEdit) {
-                Text(stringResource(R.string.edit_aquarium))
-            }
-        },
-        dismissButton = {
-            Row {
-                TextButton(onClick = onOpenWaterTests) {
-                    Text(stringResource(R.string.nav_tests))
-                }
-                TextButton(onClick = onOpenMaintenance) {
-                    Text(stringResource(R.string.nav_maintenance))
-                }
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.dismiss))
-                }
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.dismiss))
             }
         },
     )
 }
 
 @Composable
-private fun speciesKindLabel(kind: SpeciesKind): String =
-    stringResource(
+private fun QuickActionButton(
+    icon: Int,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            PixelIcon(icon, size = 22.dp)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun speciesKindLabel(kind: SpeciesKind): String =    stringResource(
         if (kind == SpeciesKind.FAUNA) R.string.species_kind_fauna else R.string.species_kind_flora
     )
 
@@ -1873,6 +1901,9 @@ private fun AquariumEditorDialog(
     onToggleProfile: (UUID) -> Unit,
     onNewProfileNameChange: (String) -> Unit,
     onAddCustomProfile: () -> Unit,
+    onBreedingChange: (Boolean) -> Unit,
+    onBreedingSinceChange: (String) -> Unit,
+    onBreedingNotesChange: (String) -> Unit,
     onSave: () -> Unit,
 ) {
     AlertDialog(
@@ -1990,6 +2021,50 @@ private fun AquariumEditorDialog(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
+
+                Text(
+                    text = stringResource(R.string.section_breeding),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.breeding_toggle),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.breeding_toggle_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = editor.isBreeding,
+                        onCheckedChange = onBreedingChange,
+                    )
+                }
+
+                if (editor.isBreeding) {
+                    OutlinedTextField(
+                        value = editor.breedingSinceInput,
+                        onValueChange = onBreedingSinceChange,
+                        label = { Text(stringResource(R.string.field_breeding_since)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = editor.breedingNotesInput,
+                        onValueChange = onBreedingNotesChange,
+                        label = { Text(stringResource(R.string.field_breeding_notes)) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         },
         confirmButton = {
@@ -2067,6 +2142,7 @@ private fun LivestockAndDosingTab(
     onSelectAquarium: (UUID) -> Unit,
     onSelectSection: (LivestockSection) -> Unit,
     onSelectKindFilter: (SpeciesKind?) -> Unit,
+    onSpeciesSearchQueryChange: (String) -> Unit,
     onAddStockEntry: () -> Unit,
     onEditStockEntry: (UUID) -> Unit,
     onMarkStockExited: (UUID) -> Unit,
@@ -2085,26 +2161,11 @@ private fun LivestockAndDosingTab(
     onDeleteDosingEvent: (UUID) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PixelIcon(R.drawable.ic_livestock)
-                Text(
-                    text = stringResource(R.string.livestock_title),
-                    modifier = Modifier.semantics { heading() },
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Text(
-                text = stringResource(R.string.livestock_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SectionHeader(
+            iconRes = R.drawable.ic_livestock,
+            title = stringResource(R.string.livestock_title),
+            subtitle = stringResource(R.string.livestock_subtitle),
+        )
 
         val activeAquarium = state.activeAquarium
         if (activeAquarium == null) {
@@ -2288,11 +2349,18 @@ private fun LivestockAndDosingTab(
                         }
                     }
 
-                    items(state.filteredSpeciesCatalog, key = { "species-${it.id}" }) { species ->
+                    item(key = "species-search") {
+                        SpeciesSearchField(
+                            query = state.speciesSearchQuery,
+                            onQueryChange = onSpeciesSearchQueryChange,
+                        )
+                    }
+
+                    items(state.searchedSpeciesCatalog, key = { "species-${it.species.id}" }) { entry ->
                         SpeciesCatalogCard(
-                            species = species,
-                            onEdit = { onEditSpecies(species.id) },
-                            onDelete = { onDeleteSpecies(species.id) },
+                            entry = entry,
+                            onEdit = { onEditSpecies(entry.species.id) },
+                            onDelete = { onDeleteSpecies(entry.species.id) },
                         )
                     }
                 }
@@ -2369,15 +2437,7 @@ private fun StockEntryCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    AssistChip(
-                        onClick = {},
-                        label = {
-                            Text(
-                                text = speciesKindLabel(entry.species.kind),
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        },
-                    )
+                    SpeciesKindBadge(kind = entry.species.kind)
                     AssistChip(
                         onClick = {},
                         label = {
@@ -2397,14 +2457,18 @@ private fun StockEntryCard(
             val quantityLabel = entry.quantity?.stripTrailingZeros()?.toPlainString()
                 ?: stringResource(R.string.quantity_unknown)
             Text(
-                text = "Qty: $quantityLabel • Introduced: ${formatTimestamp(entry.introducedAt)}",
+                text = stringResource(
+                    R.string.stock_summary,
+                    quantityLabel,
+                    formatTimestamp(entry.introducedAt),
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             entry.exitedAt?.let { exitedAt ->
                 Text(
-                    text = "Exited: ${formatTimestamp(exitedAt)}",
+                    text = stringResource(R.string.stock_exited, formatTimestamp(exitedAt)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -2417,10 +2481,12 @@ private fun StockEntryCard(
                 )
             }
 
-            Row(
+            // Wrapping row: the Italian labels do not fit on one line and used to break
+            // "Elimina" in the middle of the word.
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
                 if (entry.isActive) {
                     TextButton(onClick = onMarkExited) {
@@ -2445,10 +2511,11 @@ private fun StockEntryCard(
 
 @Composable
 private fun SpeciesCatalogCard(
-    species: SpeciesCatalogItem,
+    entry: SpeciesCatalogEntry,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val species = entry.species
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -2467,14 +2534,26 @@ private fun SpeciesCatalogCard(
                     Text(
                         text = scientific,
                         style = MaterialTheme.typography.bodySmall,
+                        fontStyle = FontStyle.Italic,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(
-                    text = speciesKindLabel(species.kind),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                if (entry.rank != SpeciesRank.SPECIES) {
+                    Text(
+                        text = stringResource(
+                            if (entry.rank == SpeciesRank.VARIETY) {
+                                R.string.species_variety_of
+                            } else {
+                                R.string.species_subspecies_of
+                            },
+                            entry.parent.commonName,
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                SpeciesKindBadge(kind = species.kind)
             }
             Row {
                 TextButton(onClick = onEdit) {
@@ -2731,9 +2810,11 @@ private fun SpeciesEditorDialog(
 private fun StockEditorDialog(
     editor: StockEditorState,
     aquariumName: String,
-    speciesCatalog: List<SpeciesCatalogItem>,
+    speciesEntries: List<SpeciesCatalogEntry>,
     onDismiss: () -> Unit,
     onSelectSpecies: (UUID) -> Unit,
+    onSpeciesQueryChange: (String) -> Unit,
+    onSpeciesKindFilterChange: (SpeciesKind?) -> Unit,
     onNewSpeciesChange: (String) -> Unit,
     onNewSpeciesKindChange: (SpeciesKind) -> Unit,
     onCreateSpecies: () -> Unit,
@@ -2785,18 +2866,37 @@ private fun StockEditorDialog(
                     fontWeight = FontWeight.SemiBold,
                 )
 
+                SpeciesSearchField(
+                    query = editor.speciesQuery,
+                    onQueryChange = onSpeciesQueryChange,
+                )
+
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    speciesCatalog.forEach { species ->
-                        FilterChip(
-                            selected = editor.selectedSpeciesId == species.id,
-                            onClick = { onSelectSpecies(species.id) },
-                            label = { Text("${species.commonName} (${speciesKindLabel(species.kind)})") },
-                        )
-                    }
+                    FilterChip(
+                        selected = editor.speciesKindFilter == null,
+                        onClick = { onSpeciesKindFilterChange(null) },
+                        label = { Text(stringResource(R.string.filter_all_species)) },
+                    )
+                    FilterChip(
+                        selected = editor.speciesKindFilter == SpeciesKind.FAUNA,
+                        onClick = { onSpeciesKindFilterChange(SpeciesKind.FAUNA) },
+                        label = { Text(stringResource(R.string.filter_fauna)) },
+                    )
+                    FilterChip(
+                        selected = editor.speciesKindFilter == SpeciesKind.FLORA,
+                        onClick = { onSpeciesKindFilterChange(SpeciesKind.FLORA) },
+                        label = { Text(stringResource(R.string.filter_flora)) },
+                    )
                 }
+
+                SpeciesPickerList(
+                    entries = speciesEntries,
+                    selectedSpeciesId = editor.selectedSpeciesId,
+                    onSelect = onSelectSpecies,
+                )
 
                 Text(
                     text = stringResource(R.string.stock_new_species_title),
@@ -3255,26 +3355,11 @@ private fun SettingsAndDisclosuresTab(
             }
         }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    PixelIcon(R.drawable.ic_settings)
-                    Text(
-                        text = stringResource(R.string.settings_title),
-                        modifier = Modifier.semantics { heading() },
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                Text(
-                    text = stringResource(R.string.settings_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            SectionHeader(
+                iconRes = R.drawable.ic_settings,
+                title = stringResource(R.string.settings_title),
+                subtitle = stringResource(R.string.settings_subtitle),
+            )
         }
 
         item {

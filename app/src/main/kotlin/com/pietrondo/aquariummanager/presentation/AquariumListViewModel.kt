@@ -21,6 +21,7 @@ import com.pietrondo.aquariummanager.domain.MeasurementRecord
 import com.pietrondo.aquariummanager.domain.NfcTagBinding
 import com.pietrondo.aquariummanager.domain.ParameterTrendSummary
 import com.pietrondo.aquariummanager.domain.ProductRecord
+import com.pietrondo.aquariummanager.domain.SpeciesCatalogEntry
 import com.pietrondo.aquariummanager.domain.SpeciesCatalogItem
 import com.pietrondo.aquariummanager.domain.SpeciesDraft
 import com.pietrondo.aquariummanager.domain.SpeciesKind
@@ -29,6 +30,7 @@ import com.pietrondo.aquariummanager.domain.StockEntryRecord
 import com.pietrondo.aquariummanager.domain.calculateParameterTrends
 import com.pietrondo.aquariummanager.domain.evaluateMaintenanceVolumeWarning
 import com.pietrondo.aquariummanager.domain.filterByKind
+import com.pietrondo.aquariummanager.domain.searchSpeciesCatalog
 import java.math.BigDecimal
 import java.time.DayOfWeek
 import java.time.Instant
@@ -62,6 +64,16 @@ enum class LivestockSection {
     SPECIES,
 }
 
+/** The shortcuts offered right after a tag identifies an aquarium. */
+enum class NfcQuickAction {
+    ANIMALS,
+    PLANTS,
+    WATER_TEST,
+    FOOD,
+    MAINTENANCE,
+    EDIT_AQUARIUM,
+}
+
 data class AquariumEditorState(
     val editingAquariumId: UUID? = null,
     val nameInput: String = "",
@@ -73,6 +85,12 @@ data class AquariumEditorState(
     val validationError: String? = null,
     val profileValidationError: String? = null,
     val isSaving: Boolean = false,
+    /** Tag bound to the aquarium as soon as it is saved. */
+    val nfcTagToBind: String? = null,
+    /** True while the animals of this aquarium are breeding. */
+    val isBreeding: Boolean = false,
+    val breedingSinceInput: String = "",
+    val breedingNotesInput: String = "",
 )
 
 data class MeasurementEditorState(
@@ -118,8 +136,11 @@ data class StockEditorState(
     val newSpeciesError: String? = null,
     val validationError: String? = null,
     val isSaving: Boolean = false,
+    /** Free text over the common name and the Latin name of the species catalog. */
+    val speciesQuery: String = "",
+    /** Only the fauna or only the flora of the catalog, or both. */
+    val speciesKindFilter: SpeciesKind? = null,
 )
-
 data class ProductEditorState(
     val editingProductId: UUID? = null,
     val nameInput: String = "",
@@ -176,6 +197,8 @@ sealed interface AquariumListState {
         val maintenanceTypeCatalog: List<MaintenanceTypeCatalogItem> = emptyList(),
         val speciesCatalog: List<SpeciesCatalogItem> = emptyList(),
         val selectedSpeciesKindFilter: SpeciesKind? = null,
+        /** Free text over the common name and the Latin name of the species catalog. */
+        val speciesSearchQuery: String = "",
         val stockEntries: List<StockEntryRecord> = emptyList(),
         val products: List<ProductRecord> = emptyList(),
         val doseUnitCatalog: List<DoseUnitCatalogItem> = emptyList(),
@@ -192,7 +215,11 @@ sealed interface AquariumListState {
         val nfcTagBindings: List<NfcTagBinding> = emptyList(),
         val isNfcAssigningTag: Boolean = false,
         val isNfcIdentifying: Boolean = false,
+        /** The tag of an unknown scan, kept so a new aquarium can be created for it. */
+        val unboundNfcTagId: String? = null,
         val identifiedAquariumId: UUID? = null,
+        /** The tag that identified the aquarium, used to keep the quick actions closed. */
+        val identifiedNfcTagId: String? = null,
         val nfcStatus: NfcStatus? = null,
         val backupScheduleSettings: com.pietrondo.aquariummanager.domain.BackupScheduleSettings =
             com.pietrondo.aquariummanager.domain.BackupScheduleSettings(),
@@ -210,6 +237,21 @@ sealed interface AquariumListState {
 
         val filteredSpeciesCatalog: List<SpeciesCatalogItem>
             get() = speciesCatalog.filterByKind(selectedSpeciesKindFilter)
+
+        /** The species catalog searched by common and Latin name, subspecies grouped. */
+        val searchedSpeciesCatalog: List<SpeciesCatalogEntry>
+            get() = speciesCatalog
+                .filterByKind(selectedSpeciesKindFilter)
+                .searchSpeciesCatalog(speciesSearchQuery)
+
+        /** The species offered by the stock editor, searched and narrowed by kind. */
+        val stockEditorSpeciesEntries: List<SpeciesCatalogEntry>
+            get() {
+                val editor = stockEditorState ?: return emptyList()
+                return speciesCatalog
+                    .searchSpeciesCatalog(editor.speciesQuery)
+                    .filter { editor.speciesKindFilter == null || it.species.kind == editor.speciesKindFilter }
+            }
 
         val filteredStockEntries: List<StockEntryRecord>
             get() = if (selectedSpeciesKindFilter == null) {
@@ -357,6 +399,7 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                             maintenanceTypeCatalog = unmodifiableMaintCatalog,
                             speciesCatalog = unmodifiableSpeciesCatalog,
                             selectedSpeciesKindFilter = previous?.selectedSpeciesKindFilter,
+                            speciesSearchQuery = previous?.speciesSearchQuery.orEmpty(),
                             stockEntries = unmodifiableStockEntries,
                             products = unmodifiableProducts,
                             doseUnitCatalog = unmodifiableDoseUnits,
@@ -373,7 +416,9 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                             nfcTagBindings = unmodifiableNfcTags,
                             isNfcAssigningTag = previous?.isNfcAssigningTag ?: false,
                             isNfcIdentifying = previous?.isNfcIdentifying ?: false,
+                            unboundNfcTagId = previous?.unboundNfcTagId,
                             identifiedAquariumId = previous?.identifiedAquariumId,
+                            identifiedNfcTagId = previous?.identifiedNfcTagId,
                             nfcStatus = previous?.nfcStatus,
                             backupScheduleSettings = base.backupScheduleSettings,
                             restorePreview = previous?.restorePreview,
@@ -418,7 +463,7 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
     /** Arms the reader so the next scanned tag opens the aquarium it identifies. */
     fun startNfcIdentification() {
         updateSuccess {
-            it.copy(isNfcIdentifying = true, nfcStatus = null, actionError = null)
+            it.copy(isNfcIdentifying = true, nfcStatus = null, actionError = null, identifiedNfcTagId = null)
         }
     }
 
@@ -435,8 +480,76 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
     }
 
     /**
+     * Opens the aquarium editor for a tag that is not bound to any aquarium: saving the
+     * new aquarium binds the tag to it.
+     */
+    fun createAquariumFromNfcTag(tagId: String) {
+        updateSuccess {
+            it.copy(
+                editorState = AquariumEditorState(nfcTagToBind = tagId),
+                unboundNfcTagId = null,
+                nfcStatus = null,
+                actionError = null,
+            )
+        }
+    }
+
+    fun dismissUnboundNfcTag() {
+        updateSuccess { it.copy(unboundNfcTagId = null) }
+    }
+
+    /**
+     * Runs one of the shortcuts offered by an identified aquarium: it selects that
+     * aquarium, switches to the matching section and opens the editor it needs.
+     */
+    fun runNfcQuickAction(action: NfcQuickAction) {
+        val current = mutableState.value as? AquariumListState.Success ?: return
+        val aquariumId = current.identifiedAquariumId ?: return
+        selectedAquariumIdFlow.value = aquariumId
+        updateSuccess {
+            it.copy(
+                selectedAquariumId = aquariumId,
+                identifiedAquariumId = null,
+                actionError = null,
+            )
+        }
+        when (action) {
+            NfcQuickAction.ANIMALS -> {
+                selectTab(AppTab.LIVESTOCK)
+                selectLivestockSection(LivestockSection.STOCK)
+                openCreateStockEditor(SpeciesKind.FAUNA)
+            }
+
+            NfcQuickAction.PLANTS -> {
+                selectTab(AppTab.LIVESTOCK)
+                selectLivestockSection(LivestockSection.STOCK)
+                openCreateStockEditor(SpeciesKind.FLORA)
+            }
+
+            NfcQuickAction.WATER_TEST -> {
+                selectTab(AppTab.TESTS)
+                openMeasurementEditor()
+            }
+
+            NfcQuickAction.FOOD -> {
+                selectTab(AppTab.LIVESTOCK)
+                selectLivestockSection(LivestockSection.DOSING)
+                openAdHocDosingEditor()
+            }
+
+            NfcQuickAction.MAINTENANCE -> {
+                selectTab(AppTab.MAINTENANCE)
+                openCreateMaintenanceEditor()
+            }
+
+            NfcQuickAction.EDIT_AQUARIUM -> openEditEditor(aquariumId)
+        }
+    }
+
+    /**
      * Handles a tag read by the platform reader. While the assignment is armed the tag
-     * is bound to the active aquarium, otherwise it selects the aquarium it belongs to.
+     * is bound to the active aquarium, otherwise it identifies the aquarium it belongs
+     * to and opens its quick actions.
      */
     fun onNfcTagScanned(tagId: String) {
         val current = mutableState.value as? AquariumListState.Success ?: return
@@ -444,13 +557,20 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
         val isIdentifying = current.isNfcIdentifying
         val targetId = current.activeAquariumId
         val targetName = current.activeAquarium?.name
+        // A dismissed tag stays dismissed while it rests on the phone, otherwise the
+        // reader would reopen the quick actions every two seconds.
+        if (current.identifiedNfcTagId == tagId && current.identifiedAquariumId == null) return
         viewModelScope.launch {
             try {
                 if (isIdentifying) {
                     val aquariumId = repository.findAquariumIdForNfcTag(tagId)
                     if (aquariumId == null) {
                         updateSuccess {
-                            it.copy(isNfcIdentifying = false, nfcStatus = NfcStatus.UnknownTag(tagId))
+                            it.copy(
+                                isNfcIdentifying = false,
+                                unboundNfcTagId = tagId,
+                                nfcStatus = NfcStatus.UnknownTag(tagId),
+                            )
                         }
                     } else {
                         selectedAquariumIdFlow.value = aquariumId
@@ -459,6 +579,7 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                                 isNfcIdentifying = false,
                                 selectedAquariumId = aquariumId,
                                 identifiedAquariumId = aquariumId,
+                                identifiedNfcTagId = tagId,
                                 nfcStatus = null,
                             )
                         }
@@ -483,7 +604,12 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                 } else {
                     val aquariumId = repository.findAquariumIdForNfcTag(tagId)
                     if (aquariumId == null) {
-                        updateSuccess { it.copy(nfcStatus = NfcStatus.UnknownTag(tagId)) }
+                        updateSuccess {
+                            it.copy(
+                                unboundNfcTagId = tagId,
+                                nfcStatus = NfcStatus.UnknownTag(tagId),
+                            )
+                        }
                     } else {
                         val name = current.aquariumDetails
                             .firstOrNull { it.id == aquariumId }
@@ -493,6 +619,8 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                         updateSuccess {
                             it.copy(
                                 selectedAquariumId = aquariumId,
+                                identifiedAquariumId = aquariumId,
+                                identifiedNfcTagId = tagId,
                                 nfcStatus = NfcStatus.AquariumSelected(name),
                             )
                         }
@@ -534,6 +662,10 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                     grossLitresInput = target.grossLitres?.stripTrailingZeros()?.toPlainString().orEmpty(),
                     notesInput = target.notes.orEmpty(),
                     selectedProfileIds = target.profiles.mapTo(linkedSetOf()) { it.id },
+                    isBreeding = target.isBreeding,
+                    breedingSinceInput = target.breedingSince
+                        ?.atZone(ZoneOffset.UTC)?.toLocalDate()?.toString().orEmpty(),
+                    breedingNotesInput = target.breedingNotes.orEmpty(),
                 )
             )
         }
@@ -568,6 +700,29 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
             }
             editor.copy(selectedProfileIds = updated)
         }
+    }
+
+    /** Turns the breeding period on or off; the date defaults to today when it starts. */
+    fun setBreeding(isBreeding: Boolean) {
+        updateEditor { editor ->
+            editor.copy(
+                isBreeding = isBreeding,
+                breedingSinceInput = if (isBreeding && editor.breedingSinceInput.isBlank()) {
+                    LocalDate.now(ZoneOffset.UTC).toString()
+                } else {
+                    editor.breedingSinceInput
+                },
+                validationError = null,
+            )
+        }
+    }
+
+    fun updateBreedingSinceInput(value: String) {
+        updateEditor { it.copy(breedingSinceInput = value, validationError = null) }
+    }
+
+    fun updateBreedingNotesInput(value: String) {
+        updateEditor { it.copy(breedingNotesInput = value, validationError = null) }
     }
 
     fun updateNewProfileNameInput(value: String) {
@@ -635,6 +790,19 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
             return
         }
 
+        val breedingSince = if (!editor.isBreeding) {
+            null
+        } else {
+            try {
+                parseRequiredLocalDate(editor.breedingSinceInput, "Breeding start date")
+                    .atStartOfDay(ZoneOffset.UTC)
+                    .toInstant()
+            } catch (e: IllegalArgumentException) {
+                updateEditor { it.copy(validationError = e.message) }
+                return
+            }
+        }
+
         val draft = try {
             AquariumDraft(
                 name = trimmedName,
@@ -642,6 +810,8 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                 grossLitres = grossLitres,
                 notes = editor.notesInput.trim().takeIf { it.isNotEmpty() },
                 profileIds = editor.selectedProfileIds,
+                breedingSince = breedingSince,
+                breedingNotes = editor.breedingNotesInput.trim().takeIf { it.isNotEmpty() },
             )
         } catch (e: IllegalArgumentException) {
             updateEditor { it.copy(validationError = e.message ?: "Invalid aquarium values.") }
@@ -658,11 +828,19 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                     repository.updateAquarium(editingId, draft)
                     editingId
                 }
+                // A tank created from a new tag keeps that tag: the sticker identifies it
+                // from the moment the aquarium exists.
+                editor.nfcTagToBind?.let { tagId ->
+                    repository.bindNfcTag(savedId, tagId)
+                }
                 selectedAquariumIdFlow.value = savedId
                 updateSuccess {
                     it.copy(
                         editorState = null,
                         selectedAquariumId = savedId,
+                        nfcStatus = editor.nfcTagToBind?.let { tagId ->
+                            NfcStatus.TagBound(aquariumName = trimmedName, tagId = tagId)
+                        } ?: it.nfcStatus,
                     )
                 }
             } catch (cancelled: CancellationException) {
@@ -1107,20 +1285,36 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
         }
     }
 
-    fun openCreateStockEditor() {
+    fun openCreateStockEditor(kind: SpeciesKind? = null) {
         val current = mutableState.value as? AquariumListState.Success ?: return
         if (current.activeAquariumId == null) return
-        val defaultSpeciesId = current.filteredSpeciesCatalog.firstOrNull()?.id
-            ?: current.speciesCatalog.firstOrNull()?.id
+        val candidates = current.speciesCatalog.filter { kind == null || it.kind == kind }
+        val defaultSpeciesId = candidates.firstOrNull()?.id ?: current.speciesCatalog.firstOrNull()?.id
         updateSuccess {
             it.copy(
                 stockEditorState = StockEditorState(
                     selectedSpeciesId = defaultSpeciesId,
                     introducedDateInput = LocalDate.now(ZoneOffset.UTC).toString(),
+                    speciesKindFilter = kind,
                 ),
                 actionError = null,
             )
         }
+    }
+
+    /** Free text over the common name and the Latin name of the species catalog. */
+    fun updateSpeciesSearchQuery(value: String) {
+        updateSuccess { it.copy(speciesSearchQuery = value) }
+    }
+
+    /** Free text over the common name and the Latin name, inside the stock editor. */
+    fun updateStockSpeciesQuery(value: String) {
+        updateStockEditor { it.copy(speciesQuery = value) }
+    }
+
+    /** Restricts the stock editor catalog to the fauna, to the flora, or to both. */
+    fun selectStockSpeciesKind(kind: SpeciesKind?) {
+        updateStockEditor { it.copy(speciesKindFilter = kind) }
     }
 
     fun openEditStockEditor(stockId: UUID) {

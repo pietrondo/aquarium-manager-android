@@ -5,6 +5,7 @@ import com.pietrondo.aquariummanager.domain.AquariumDetail
 import com.pietrondo.aquariummanager.domain.AquariumRepository
 import com.pietrondo.aquariummanager.domain.AquariumSummary
 import com.pietrondo.aquariummanager.domain.NfcTagBinding
+import com.pietrondo.aquariummanager.domain.SpeciesKind
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -154,6 +155,88 @@ class AquariumListNfcViewModelTest {
     fun tagIdIsGroupedInBytePairsForReading() {
         assertEquals("04 a1 b2 c3 d4 e5 f6", formatNfcTagId("04a1b2c3d4e5f6"))
         assertEquals("04 a1", formatNfcTagId("04a1"))
+    }
+
+    @Test
+    fun scanningAnUnknownTagOffersToCreateAnAquariumForIt() = runTest {
+        val repo = FakeNfcRepository()
+        val vm = viewModel(repo)
+        runCurrent()
+
+        vm.onNfcTagScanned("04ffffffffffff")
+        runCurrent()
+
+        val state = vm.state.value as AquariumListState.Success
+        assertEquals("04ffffffffffff", state.unboundNfcTagId)
+
+        vm.createAquariumFromNfcTag("04ffffffffffff")
+        runCurrent()
+
+        val editing = vm.state.value as AquariumListState.Success
+        assertNull(editing.unboundNfcTagId)
+        assertEquals("04ffffffffffff", editing.editorState?.nfcTagToBind)
+    }
+
+    @Test
+    fun aQuickActionOpensTheStockEditorFilteredToThatKind() = runTest {
+        val repo = FakeNfcRepository()
+        repo.addAquarium(reefId, "Reef")
+        repo.bind(reefId, tagId)
+        val vm = viewModel(repo)
+        runCurrent()
+
+        vm.onNfcTagScanned(tagId)
+        runCurrent()
+        assertEquals(reefId, (vm.state.value as AquariumListState.Success).identifiedAquariumId)
+
+        vm.runNfcQuickAction(NfcQuickAction.PLANTS)
+        runCurrent()
+
+        val state = vm.state.value as AquariumListState.Success
+        assertEquals(AppTab.LIVESTOCK, state.selectedTab)
+        assertEquals(LivestockSection.STOCK, state.livestockSection)
+        assertEquals(SpeciesKind.FLORA, state.stockEditorState?.speciesKindFilter)
+        assertNull(state.identifiedAquariumId)
+    }
+
+    @Test
+    fun aQuickActionOpensTheWaterTestEditorOfTheIdentifiedAquarium() = runTest {
+        val repo = FakeNfcRepository()
+        repo.addAquarium(reefId, "Reef")
+        repo.bind(reefId, tagId)
+        val vm = viewModel(repo)
+        runCurrent()
+
+        vm.onNfcTagScanned(tagId)
+        runCurrent()
+
+        vm.runNfcQuickAction(NfcQuickAction.WATER_TEST)
+        runCurrent()
+
+        val state = vm.state.value as AquariumListState.Success
+        assertEquals(AppTab.TESTS, state.selectedTab)
+        assertEquals(reefId, state.activeAquariumId)
+        assertNull(state.identifiedAquariumId)
+    }
+
+    @Test
+    fun aDismissedTagDoesNotReopenTheQuickActions() = runTest {
+        val repo = FakeNfcRepository()
+        repo.addAquarium(reefId, "Reef")
+        repo.bind(reefId, tagId)
+        val vm = viewModel(repo)
+        runCurrent()
+
+        vm.onNfcTagScanned(tagId)
+        runCurrent()
+        vm.dismissIdentifiedAquarium()
+        runCurrent()
+
+        // The reader reports the resting tag again: the sheet must stay closed.
+        vm.onNfcTagScanned(tagId)
+        runCurrent()
+
+        assertNull((vm.state.value as AquariumListState.Success).identifiedAquariumId)
     }
 
     @Test

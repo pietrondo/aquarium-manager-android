@@ -400,3 +400,71 @@ Executed verification for the whole change: `python -m unittest discover -s test
 `aq-d34.6` is closed against this evidence; the Doze deferral stays an explicit open item of the release acceptance (`aq-ct8.4`).
 
 
+
+## Species search, subspecies, NFC quick actions and breeding status — 2026-11-04
+
+See [the design decision](decisions/2026-11-04-species-search-breeding-and-nfc-actions.md).
+
+**What changed**
+
+- **Species search.** The add-stock dialog no longer prints the whole catalog as chips: it
+  has a search field over the common and Latin name, a Fauna/Flora/Tutti filter, and a
+  list where every row shows the Latin name in italics and its kind badge. The species
+  catalog tab gained the same search field.
+- **Subspecies.** The packaged catalog grows from 85 to **103 species** with the betta
+  species, the *Betta splendens* varieties (Plakat, Halfmoon, Veil, Koi, Galaxy, Dragon,
+  Nemo, Avataar), *Trigonostigma heteromorpha sumatrana*, *Apistogramma cacatuoides
+  'Double Red'* and *Corydoras pygmaeus*. A subspecies sits indented under its species and
+  is labelled *Sottospecie di X* / *Varietà di X*. The parent is derived from the trinomial
+  scientific name, so no schema or backup change was needed for it.
+- **NFC: create an aquarium from a new tag.** Scanning an unbound tag offers *Crea un
+  acquario con questo tag*: the aquarium editor opens with the tag pending and saving binds
+  it. The NFC card is now also shown on the empty state, so the first aquarium can be
+  created from a sticker.
+- **NFC quick actions.** Touching a bound tag identifies the aquarium and opens a sheet
+  with *Animali*, *Piante*, *Test acqua*, *Cibo e dosaggi*, *Manutenzione* and *Modifica*:
+  each one selects that aquarium, switches to the right tab/section and opens the matching
+  editor. The sheet does not reopen while the same resting tag keeps being read.
+- **Breeding status.** Aquariums gained *Animali in riproduzione* (switch), *In
+  riproduzione dal* (date, defaulted to today) and *Note particolari*. The card shows an
+  *In riproduzione dal YYYY-MM-DD* badge. Room schema **v5** (`MIGRATION_4_5`, two nullable
+  columns) and backup format **v3** (v0/v1/v2 archives migrate with both fields null).
+- **Interface.** Section headers became one shared `SectionHeader` component; the stock
+  entry card prints localized *Q.tà / Introdotti* text instead of hardcoded English and
+  wraps its action row instead of truncating *Elimina* mid-word.
+
+**Executed verification — Windows, JDK 21, SDK 36/build-tools 35.0.0**
+
+| Command | Observed result |
+|---|---|
+| `.\gradlew.bat --no-daemon test lint assembleDebug` | **BUILD SUCCESSFUL in 1m 49s**, **228 variant executions / 0 failures / 0 errors**, lint **0 errors / 115 warnings** |
+| `python -m unittest discover -s tests` | **17 passed** (asset tooling + configuration guards) |
+
+New JVM tests: `SpeciesSearchTest` (common/Latin match, accents, subspecies keeps its
+parent), `SpeciesCatalogGroupingTest` (subspecies/variety under its species, orphan stays
+visible), `CatalogAndAquariumDraftTest` (breeding draft and its validation),
+`CatalogAndCrudRepositoryTest.aquariumsCarryTheirBreedingPeriodAndDropItWhenStopped` (Room
+roundtrip and normalization), `LibraryBackupRepositoryTest` (v2 archive without the breeding
+keys migrates to "not breeding"; the exported archive now reports format v3),
+`AquariumListNfcViewModelTest` (unknown tag offers creation, quick action opens the stock
+editor filtered to the kind, dismissed tag does not reopen, water-test action targets the
+identified aquarium), `AquariumListViewModelTest` (catalog search by common and Latin name,
+stock editor search plus kind filter). `Migration4To5Test` is the instrumented schema test.
+
+**Bounded native check on the Pixel 10a (Android 17, API 37)**
+
+- The device database was at v4 and migrated to **v5** on launch (`PRAGMA user_version` 5);
+  the pre-existing aquarium row survived.
+- `Aggiungi alla vasca` shows the search field, the kind chips and the rows with common +
+  Latin name + badge; typing `betta` returns *Betta*, *Betta Avataar*, *Betta Drago*,
+  *Betta Galaxy*, each variety labelled *Varietà di Betta*. Selecting *Betta Drago* saved a
+  stock entry.
+- The aquarium editor shows *Riproduzione*: switching *Animali in riproduzione* on reveals
+  the date (prefilled `2026-11-04`) and *Note particolari*; saving shows **In riproduzione
+  dal 2026-11-04** on the aquarium card.
+
+**Not claimed:** no physical NFC sticker was available in this session, so the new
+create-aquarium-from-tag flow and the quick-action sheet were verified by the ViewModel
+tests, not by touching a real NTAG215. The instrumented `Migration4To5Test` was not executed
+here (no connected run in this session).
+

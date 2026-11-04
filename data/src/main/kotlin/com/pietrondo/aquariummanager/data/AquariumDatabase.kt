@@ -31,6 +31,7 @@ import com.pietrondo.aquariummanager.domain.parseBoundedDecimal
 import com.pietrondo.aquariummanager.domain.validateBoundedDecimal
 import com.pietrondo.aquariummanager.domain.StockEntryRecord
 import com.pietrondo.aquariummanager.domain.validateAquariumVolumes
+import com.pietrondo.aquariummanager.domain.validateBreeding
 import com.pietrondo.aquariummanager.domain.validateDosingEvent
 import com.pietrondo.aquariummanager.domain.validateDosingPlan
 import com.pietrondo.aquariummanager.domain.validateMaintenanceEvent
@@ -55,10 +56,14 @@ data class AquariumEntity(
     val grossLitres: BigDecimal?,
     val notes: String?,
     val createdAt: Instant,
+    /** Start of the breeding period, or null when the aquarium is not breeding. */
+    val breedingSince: Instant? = null,
+    val breedingNotes: String? = null,
 ) {
     init {
         validateNonBlank(name, "Aquarium name")
         validateAquariumVolumes(netLitres, grossLitres)
+        validateBreeding(breedingSince, breedingNotes)
     }
 }
 
@@ -303,6 +308,8 @@ fun AquariumEntity.toDetail(profiles: List<AquariumProfile>) = AquariumDetail(
     notes = notes,
     createdAt = createdAt,
     profiles = profiles,
+    breedingSince = breedingSince,
+    breedingNotes = breedingNotes,
 )
 
 fun MeasurementEntity.toDomain() = MeasurementRecord(
@@ -626,6 +633,8 @@ interface AquariumDao {
         grossLitres: BigDecimal?,
         notes: String?,
         profileIds: Set<UUID>,
+        breedingSince: Instant? = null,
+        breedingNotes: String? = null,
     ) {
         val existing = getAquariumById(id) ?: throw IllegalArgumentException("Aquarium not found: $id")
         update(
@@ -634,6 +643,8 @@ interface AquariumDao {
                 netLitres = netLitres,
                 grossLitres = grossLitres,
                 notes = notes,
+                breedingSince = breedingSince,
+                breedingNotes = breedingNotes,
             )
         )
         deleteProfileLinksForAquarium(id)
@@ -861,6 +872,8 @@ interface AquariumDao {
                 grossLitres = it.grossLitres,
                 notes = it.notes,
                 createdAt = it.createdAt,
+                breedingSince = it.breedingSince,
+                breedingNotes = it.breedingNotes,
             )
         }
         val profiles = getAllProfilesOrdered().map {
@@ -1001,6 +1014,8 @@ interface AquariumDao {
                     grossLitres = item.grossLitres,
                     notes = item.notes,
                     createdAt = item.createdAt,
+                    breedingSince = item.breedingSince,
+                    breedingNotes = item.breedingNotes,
                 )
             )
         }
@@ -1138,7 +1153,7 @@ interface AquariumDao {
         MaintenanceTypeEntity::class,
         AquariumNfcTagEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(AquariumConverters::class)
@@ -1236,6 +1251,13 @@ abstract class AquariumDatabase : RoomDatabase() {
                 )
             }
         }
-        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Breeding status: a start date and notes, both null while not breeding.
+                db.execSQL("ALTER TABLE `aquariums` ADD COLUMN `breedingSince` TEXT")
+                db.execSQL("ALTER TABLE `aquariums` ADD COLUMN `breedingNotes` TEXT")
+            }
+        }
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
     }
 }

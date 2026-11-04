@@ -467,6 +467,52 @@ class AquariumListViewModelTest {
     }
 
     @Test
+    fun theSpeciesCatalogIsSearchableByCommonAndLatinName() = runTest {
+        val repo = fakeCrudRepository()
+        repo.createAquarium(AquariumDraft(name = "Nano", netLitres = BigDecimal("20")))
+
+        val vm = AquariumListViewModel(repo).also { store.put("search", it) }
+        runCurrent()
+
+        vm.selectTab(AppTab.LIVESTOCK)
+        vm.updateSpeciesSearchQuery("cherry")
+        val byCommonName = vm.state.value as AquariumListState.Success
+        assertEquals(1, byCommonName.searchedSpeciesCatalog.size)
+        assertEquals("Cherry Shrimp", byCommonName.searchedSpeciesCatalog.single().species.commonName)
+
+        vm.updateSpeciesSearchQuery("microsorum")
+        val byLatinName = vm.state.value as AquariumListState.Success
+        assertEquals(1, byLatinName.searchedSpeciesCatalog.size)
+        assertEquals("Java Fern", byLatinName.searchedSpeciesCatalog.single().species.commonName)
+
+        vm.updateSpeciesSearchQuery("nothing here")
+        assertTrue((vm.state.value as AquariumListState.Success).searchedSpeciesCatalog.isEmpty())
+    }
+
+    @Test
+    fun theStockEditorCatalogIsSearchableAndFilterableByKind() = runTest {
+        val repo = fakeCrudRepository()
+        val tank = repo.createAquarium(AquariumDraft(name = "Nano", netLitres = BigDecimal("20")))
+
+        val vm = AquariumListViewModel(repo).also { store.put("stock-search", it) }
+        runCurrent()
+
+        vm.selectTab(AppTab.LIVESTOCK)
+        vm.selectAquarium(tank)
+        vm.openCreateStockEditor(com.pietrondo.aquariummanager.domain.SpeciesKind.FAUNA)
+        runCurrent()
+
+        val fauna = vm.state.value as AquariumListState.Success
+        assertEquals(2, fauna.stockEditorSpeciesEntries.size)
+        assertTrue(fauna.stockEditorSpeciesEntries.all { it.species.kind == com.pietrondo.aquariummanager.domain.SpeciesKind.FAUNA })
+
+        vm.updateStockSpeciesQuery("cherry")
+        val filtered = vm.state.value as AquariumListState.Success
+        assertEquals(1, filtered.stockEditorSpeciesEntries.size)
+        assertEquals("Cherry Shrimp", filtered.stockEditorSpeciesEntries.single().species.commonName)
+    }
+
+    @Test
     fun aSpeciesCreatedFromTheStockEditorIsAddedAndSelected() = runTest {
         val repo = fakeCrudRepository()
         val tank = repo.createAquarium(AquariumDraft(name = "Nano", netLitres = BigDecimal("20")))

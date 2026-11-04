@@ -52,6 +52,32 @@ class CatalogAndCrudRepositoryTest {
     }
 
     @Test
+    fun aquariumsCarryTheirBreedingPeriodAndDropItWhenStopped() = runBlocking {
+        val tankId = repo.createAquarium(
+            AquariumDraft(
+                name = "Betta",
+                breedingSince = Instant.parse("2026-11-01T00:00:00Z"),
+                breedingNotes = "  Separate the male  ",
+            )
+        )
+
+        val breeding = repo.observeAquariumDetails().first().single { it.id == tankId }
+        assertTrue(breeding.isBreeding)
+        assertEquals(Instant.parse("2026-11-01T00:00:00Z"), breeding.breedingSince)
+        assertEquals("Separate the male", breeding.breedingNotes)
+
+        // Turning the breeding period off also drops its notes.
+        repo.updateAquarium(
+            tankId,
+            AquariumDraft(name = "Betta", breedingSince = null),
+        )
+        val idle = repo.observeAquariumDetails().first().single { it.id == tankId }
+        assertEquals(false, idle.isBreeding)
+        assertNull(idle.breedingSince)
+        assertNull(idle.breedingNotes)
+    }
+
+    @Test
     fun defaultPackagedCatalogLoadsStableUuidsCanonicalUnitsAndSpecies() {
         val catalog = CatalogJsonParser.loadDefaultCatalog()
         assertEquals(1, catalog.version)
