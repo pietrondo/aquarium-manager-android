@@ -123,9 +123,12 @@
     <string name="disclaimer_biological_body">Species catalog entries, water parameter trends, and dosing schedules are informational records only. This app does not provide veterinary or biological advice and does not guarantee species suitability, water safety, or outcomes.</string>
     <string name="privacy_offline_summary">100% offline: no accounts, no analytics, no internet permission, and no cloud servers. Data stays in local Room storage and user-chosen SAF backup files.</string>
     <string name="nfc_title">NFC tags</string>
+    <string name="nfc_summary_none">No tag bound yet</string>
+    <string name="nfc_expand">Show the NFC tag management</string>
+    <string name="nfc_collapse">Hide the NFC tag management</string>
     <string name="nfc_explanation">Stick a tag on each aquarium. Touch a bound tag against the phone to open that aquarium, or assign a tag to the selected one.</string>
     <string name="nfc_assign_button">Assign NFC tag</string>
-<string name="nfc_identify_button">Identify aquarium</string>
+<string name="nfc_identify_button">Identify</string>
 <string name="nfc_identifying_hint">Touch the tag against the phone to open its aquarium.</string>
     <string name="nfc_assigning_hint">Touch the tag against the phone to bind it to the selected aquarium.</string>
     <string name="nfc_cancel_assignment">Cancel</string>

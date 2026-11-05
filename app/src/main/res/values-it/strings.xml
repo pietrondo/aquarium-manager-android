@@ -224,9 +224,12 @@
     <string name="msg_volume_exceeds_net">Nota: il volume cambiato (%1$s L) supera il volume netto (%2$s L).</string>
     <string name="msg_volume_exceeds_gross">Nota: il volume cambiato (%1$s L) supera il volume lordo (%2$s L).</string>
     <string name="nfc_title">Tag NFC</string>
+    <string name="nfc_summary_none">Nessun tag associato</string>
+    <string name="nfc_expand">Mostra la gestione dei tag NFC</string>
+    <string name="nfc_collapse">Nascondi la gestione dei tag NFC</string>
     <string name="nfc_explanation">Attacca un tag a ogni acquario. Tocca un tag associato con il telefono per aprire quell\'acquario, oppure associa un tag a quello selezionato.</string>
     <string name="nfc_assign_button">Associa tag NFC</string>
-<string name="nfc_identify_button">Identifica acquario</string>
+<string name="nfc_identify_button">Identifica</string>
 <string name="nfc_identifying_hint">Avvicina il tag al telefono per aprire il suo acquario.</string>
     <string name="nfc_assigning_hint">Avvicina il tag al telefono per associarlo all\'acquario selezionato.</string>
     <string name="nfc_cancel_assignment">Annulla</string>
