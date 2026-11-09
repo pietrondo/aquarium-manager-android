@@ -95,6 +95,9 @@ data class AquariumEditorState(
     /** Optional end of the breeding period: saving it closes the period as an event. */
     val breedingEndInput: String = "",
     val breedingNotesInput: String = "",
+    /** Newly picked photo, written only when the aquarium is saved. */
+    val photoBytes: ByteArray? = null,
+    val photoRemoved: Boolean = false,
 )
 
 data class MeasurementEditorState(
@@ -125,6 +128,8 @@ data class EventEditorState(
     val dateInput: String = "",
     val validationError: String? = null,
     val isSaving: Boolean = false,
+    /** Newly picked photo, written only when the event is saved. */
+    val photoBytes: ByteArray? = null,
 )
 
 data class SpeciesEditorState(
@@ -749,6 +754,18 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
         updateEditor { it.copy(breedingNotesInput = value, validationError = null) }
     }
 
+    fun setAquariumPhoto(bytes: ByteArray) {
+        updateEditor { it.copy(photoBytes = bytes, photoRemoved = false) }
+    }
+
+    fun removeAquariumPhoto() {
+        updateEditor { it.copy(photoBytes = null, photoRemoved = true) }
+    }
+
+    fun aquariumPhotoFile(id: UUID): java.io.File? = repository.aquariumPhotoFile(id)
+
+    fun maintenanceEventPhotoFile(id: UUID): java.io.File? = repository.maintenanceEventPhotoFile(id)
+
     fun updateNewProfileNameInput(value: String) {
         updateEditor { it.copy(newProfileNameInput = value, profileValidationError = null) }
     }
@@ -877,6 +894,11 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                 // from the moment the aquarium exists.
                 editor.nfcTagToBind?.let { tagId ->
                     repository.bindNfcTag(savedId, tagId)
+                }
+                val photoBytes = editor.photoBytes
+                when {
+                    photoBytes != null -> repository.saveAquariumPhoto(savedId, photoBytes)
+                    editor.photoRemoved -> repository.deleteAquariumPhoto(savedId)
                 }
                 // Closing a running breeding period leaves a dated event in the log.
                 val wasBreeding = editingId != null &&
@@ -1231,6 +1253,10 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
         updateEventEditor { it.copy(dateInput = value, validationError = null) }
     }
 
+    fun setEventPhoto(bytes: ByteArray) {
+        updateEventEditor { it.copy(photoBytes = bytes) }
+    }
+
     fun saveEvent() {
         val current = mutableState.value as? AquariumListState.Success ?: return
         val aquariumId = current.activeAquariumId ?: return
@@ -1271,7 +1297,10 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
         updateEventEditor { it.copy(isSaving = true, validationError = null) }
         viewModelScope.launch {
             try {
-                repository.recordMaintenanceEvent(aquariumId, draft)
+                val eventId = repository.recordMaintenanceEvent(aquariumId, draft)
+                editor.photoBytes?.let { bytes ->
+                    repository.saveMaintenanceEventPhoto(eventId, bytes)
+                }
                 updateSuccess { it.copy(eventEditorState = null) }
             } catch (cancelled: CancellationException) {
                 throw cancelled

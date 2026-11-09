@@ -1,5 +1,6 @@
 package com.pietrondo.aquariummanager.domain
 
+import java.io.File
 import java.math.BigDecimal
 import java.time.DayOfWeek
 import java.time.Instant
@@ -450,6 +451,19 @@ interface AquariumRepository : NfcTagRepository {
         flowOf(emptyList())
 
     suspend fun ensureCatalogSeeded() {}
+
+    /** Stores the JPEG bytes as the photo of the aquarium, replacing any previous one. */
+    suspend fun saveAquariumPhoto(id: UUID, jpegBytes: ByteArray): Unit = Unit
+
+    suspend fun deleteAquariumPhoto(id: UUID): Unit = Unit
+
+    fun aquariumPhotoFile(id: UUID): File? = null
+
+    suspend fun saveMaintenanceEventPhoto(id: UUID, jpegBytes: ByteArray): Unit = Unit
+
+    suspend fun deleteMaintenanceEventPhoto(id: UUID): Unit = Unit
+
+    fun maintenanceEventPhotoFile(id: UUID): File? = null
 
     suspend fun createAquarium(draft: AquariumDraft): UUID =
         throw UnsupportedOperationException("createAquarium not implemented")

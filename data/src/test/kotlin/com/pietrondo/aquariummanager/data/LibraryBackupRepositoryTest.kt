@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -999,6 +1000,40 @@ class LibraryBackupRepositoryTest {
         } catch (_: IllegalArgumentException) {
             // Expected
         }
+    }
+
+    @Test
+    fun photosTravelWithTheBackupArchiveAndComeBackOnRestore() = runBlocking {
+        val photoDir = File(tempWorkDir, "photos")
+        val withPhotos = RoomAquariumRepository(
+            dao = database.aquariumDao(),
+            documentGateway = fakeGateway,
+            backupWorkDir = tempWorkDir,
+            photoDir = photoDir,
+        )
+        val aquariumId = withPhotos.createAquarium(AquariumDraft(name = "Photo Tank"))
+        val eventId = withPhotos.recordMaintenanceEvent(
+            aquariumId,
+            MaintenanceDraft(type = "EVENT", notes = "With a photo"),
+        )
+        val aquariumPhoto = byteArrayOf(1, 2, 3, 4)
+        val eventPhoto = byteArrayOf(5, 6)
+        withPhotos.saveAquariumPhoto(aquariumId, aquariumPhoto)
+        withPhotos.saveMaintenanceEventPhoto(eventId, eventPhoto)
+
+        val zipBytes = withPhotos.exportBackupBytes()
+        assertTrue(photoDir.deleteRecursively())
+
+        withPhotos.restoreBackupFromBytes(zipBytes, confirmReplace = true)
+
+        assertArrayEquals(
+            aquariumPhoto,
+            File(photoDir, PhotoFiles.aquariumName(aquariumId)).readBytes(),
+        )
+        assertArrayEquals(
+            eventPhoto,
+            File(photoDir, PhotoFiles.eventName(eventId)).readBytes(),
+        )
     }
 }
 

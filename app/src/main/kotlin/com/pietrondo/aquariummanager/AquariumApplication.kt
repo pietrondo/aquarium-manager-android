@@ -6,6 +6,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.room.Room
 import com.pietrondo.aquariummanager.data.AquariumDatabase
+import com.pietrondo.aquariummanager.data.PhotoFiles
 import com.pietrondo.aquariummanager.data.RoomAquariumRepository
 import com.pietrondo.aquariummanager.data.SafBackupDocumentGateway
 import com.pietrondo.aquariummanager.domain.AquariumRepository
@@ -32,6 +33,7 @@ class AquariumApplication : Application() {
             dao = database.aquariumDao(),
             documentGateway = SafBackupDocumentGateway(applicationContext),
             backupWorkDir = File(applicationContext.filesDir, "backups"),
+            photoDir = File(applicationContext.filesDir, PhotoFiles.DIR_NAME),
         )
     }
 }

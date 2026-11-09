@@ -61,6 +61,7 @@ class RoomAquariumRepository(
     private val clock: () -> Instant = Instant::now,
     private val documentGateway: BackupDocumentGateway? = null,
     private val backupWorkDir: File? = null,
+    private val photoDir: File? = null,
     private val appVersion: String = "0.1.0",
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default,
@@ -239,6 +240,47 @@ class RoomAquariumRepository(
         doseUnitCatalogFlow.value = bundle.doseUnits
     }
 
+    override suspend fun saveAquariumPhoto(id: UUID, jpegBytes: ByteArray) =
+        writePhoto(PhotoFiles.aquariumName(id), jpegBytes)
+
+    override suspend fun deleteAquariumPhoto(id: UUID) =
+        deletePhoto(PhotoFiles.aquariumName(id))
+
+    override fun aquariumPhotoFile(id: UUID): File? =
+        photoFile(PhotoFiles.aquariumName(id))
+
+    override suspend fun saveMaintenanceEventPhoto(id: UUID, jpegBytes: ByteArray) =
+        writePhoto(PhotoFiles.eventName(id), jpegBytes)
+
+    override suspend fun deleteMaintenanceEventPhoto(id: UUID) =
+        deletePhoto(PhotoFiles.eventName(id))
+
+    override fun maintenanceEventPhotoFile(id: UUID): File? =
+        photoFile(PhotoFiles.eventName(id))
+
+    private fun photoFile(name: String): File? =
+        photoDir?.let { File(it, name).takeIf(File::exists) }
+
+    private suspend fun writePhoto(name: String, bytes: ByteArray) = withContext(ioDispatcher) {
+        require(bytes.size <= PhotoFiles.MAX_PHOTO_BYTES) { "Photo is too large" }
+        val dir = photoDir ?: return@withContext
+        if (!dir.exists() && !dir.mkdirs()) {
+            throw IOException("Could not create the photo directory")
+        }
+        val target = File(dir, name)
+        val temp = File(dir, "$name.tmp")
+        temp.writeBytes(bytes)
+        if (!temp.renameTo(target)) {
+            temp.delete()
+            throw IOException("Could not store the photo")
+        }
+    }
+
+    private suspend fun deletePhoto(name: String): Unit = withContext(ioDispatcher) {
+        photoDir?.let { File(it, name).delete() }
+        Unit
+    }
+
     override suspend fun createAquarium(draft: AquariumDraft): UUID = operationMutex.withLock {
         val id = UUID.randomUUID()
         val normalizedNotes = draft.notes?.trim()?.takeIf { it.isNotEmpty() }
@@ -281,7 +323,10 @@ class RoomAquariumRepository(
         }
 
     override suspend fun deleteAquarium(id: UUID) = operationMutex.withLock {
+        val eventIds = dao.getMaintenanceEventsForAquarium(id).map { it.id }
         dao.deleteAquariumWithHistories(id)
+        deleteAquariumPhoto(id)
+        eventIds.forEach { deleteMaintenanceEventPhoto(it) }
     }
 
     override suspend fun createProfile(name: String): AquariumProfile = operationMutex.withLock {
@@ -352,6 +397,7 @@ class RoomAquariumRepository(
 
     override suspend fun deleteMaintenanceEvent(id: UUID) = operationMutex.withLock {
         dao.deleteMaintenanceEventById(id)
+        deleteMaintenanceEventPhoto(id)
     }
 
     override suspend fun createSpecies(draft: SpeciesDraft): SpeciesCatalogItem =
@@ -916,7 +962,30 @@ class RoomAquariumRepository(
             afterClearHook = midImportFailureHook,
         )
 
+        // 3. Photos are files named after the restored rows: replace them only after
+        // the database accepted the new library.
+        replacePhotoFiles(verified.photos)
+
         verified.toPreview(sourceUri = sourceUri)
+    }
+
+    private suspend fun replacePhotoFiles(photos: Map<String, ByteArray>) = withContext(ioDispatcher) {
+        val dir = photoDir ?: return@withContext
+        if (!dir.exists() && !dir.mkdirs()) {
+            throw IOException("Could not create the photo directory")
+        }
+        dir.listFiles()?.forEach { file ->
+            if (file.isFile && PhotoFiles.isPhotoName(file.name)) file.delete()
+        }
+        photos.forEach { (name, bytes) -> File(dir, name).writeBytes(bytes) }
+    }
+
+    private suspend fun collectPhotoFiles(): Map<String, ByteArray> = withContext(ioDispatcher) {
+        val dir = photoDir ?: return@withContext emptyMap()
+        dir.listFiles()
+            ?.filter { it.isFile && PhotoFiles.isPhotoName(it.name) }
+            ?.associate { it.name to it.readBytes() }
+            ?: emptyMap()
     }
 
     private suspend fun createAndVerifySafetySnapshot() {
@@ -951,6 +1020,7 @@ class RoomAquariumRepository(
         createdAt: Instant = clock(),
     ): Pair<ByteArray, BackupManifest> {
         val snapshot = withContext(ioDispatcher) { dao.readFullLibrarySnapshot() }
+        val photos = collectPhotoFiles()
         val stageDir = backupWorkDir?.let { File(it, "staging") }
         return withContext(defaultDispatcher) {
             LibraryBackupCodec.buildVerifiedBackupZipBytes(
@@ -959,6 +1029,7 @@ class RoomAquariumRepository(
                 appVersion = appVersion,
                 catalog = activeCatalogBundle(),
                 tempDir = stageDir,
+                photos = photos,
             )
         }
     }

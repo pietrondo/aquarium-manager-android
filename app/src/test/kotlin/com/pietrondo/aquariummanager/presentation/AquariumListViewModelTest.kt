@@ -35,6 +35,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -278,6 +279,36 @@ class AquariumListViewModelTest {
             LocalDate.parse("2026-11-05").atStartOfDay(ZoneId.systemDefault()).toInstant(),
             event.occurredAt,
         )
+    }
+
+    @Test
+    fun aquariumAndEventPhotosAreStoredOnSaveAndRemovedOnRequest() = runTest {
+        val repo = fakeCrudRepository()
+        val vm = AquariumListViewModel(repo).also { store.put("photos", it) }
+        runCurrent()
+
+        vm.openCreateEditor()
+        vm.updateNameInput("Photo Tank")
+        vm.setAquariumPhoto(byteArrayOf(1, 2, 3))
+        vm.saveAquarium()
+        runCurrent()
+
+        val created = (vm.state.value as AquariumListState.Success).aquariumDetails.single()
+        assertArrayEquals(byteArrayOf(1, 2, 3), repo.savedAquariumPhotos[created.id])
+
+        vm.openEditEditor(created.id)
+        vm.removeAquariumPhoto()
+        vm.saveAquarium()
+        runCurrent()
+        assertFalse(repo.savedAquariumPhotos.containsKey(created.id))
+
+        vm.openEventEditor()
+        vm.updateEventNotesInput("Con foto")
+        vm.setEventPhoto(byteArrayOf(9, 8))
+        vm.saveEvent()
+        runCurrent()
+        val event = (vm.state.value as AquariumListState.Success).activeAquariumEvents.single()
+        assertArrayEquals(byteArrayOf(9, 8), repo.savedEventPhotos[event.id])
     }
 
     @Test
@@ -995,6 +1026,8 @@ class AquariumListViewModelTest {
 }
 
 private class FakeAquariumRepository : AquariumRepository {
+    val savedAquariumPhotos = mutableMapOf<UUID, ByteArray>()
+    val savedEventPhotos = mutableMapOf<UUID, ByteArray>()
     private var tick = 1L
     private val profilesFlow = MutableStateFlow(
         listOf(
@@ -1106,6 +1139,22 @@ private class FakeAquariumRepository : AquariumRepository {
             all.filter { it.aquariumId == aquariumId }
                 .sortedWith(compareByDescending<com.pietrondo.aquariummanager.domain.DosingEventRecord> { it.occurredAt }.thenBy { it.id })
         }
+
+    override suspend fun saveAquariumPhoto(id: UUID, jpegBytes: ByteArray) {
+        savedAquariumPhotos[id] = jpegBytes
+    }
+
+    override suspend fun deleteAquariumPhoto(id: UUID) {
+        savedAquariumPhotos.remove(id)
+    }
+
+    override suspend fun saveMaintenanceEventPhoto(id: UUID, jpegBytes: ByteArray) {
+        savedEventPhotos[id] = jpegBytes
+    }
+
+    override suspend fun deleteMaintenanceEventPhoto(id: UUID) {
+        savedEventPhotos.remove(id)
+    }
 
     override suspend fun createAquarium(draft: AquariumDraft): UUID {
         val id = UUID.randomUUID()

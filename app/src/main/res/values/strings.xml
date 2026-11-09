@@ -167,6 +167,8 @@
     <string name="section_breeding">Breeding</string>
     <string name="breeding_toggle">Animals are breeding</string>
     <string name="breeding_toggle_hint">Turn on to record the breeding period and its notes</string>
+    <string name="photo_choose">Choose photo</string>
+    <string name="photo_remove">Remove photo</string>
     <string name="field_breeding_since">Breeding since (YYYY-MM-DD)</string>
     <string name="field_breeding_end">Breeding ended (YYYY-MM-DD, optional)</string>
     <string name="field_breeding_notes">Breeding notes (optional)</string>

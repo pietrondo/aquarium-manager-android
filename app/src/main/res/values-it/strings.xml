@@ -268,6 +268,8 @@
     <string name="section_breeding">Riproduzione</string>
     <string name="breeding_toggle">Animali in riproduzione</string>
     <string name="breeding_toggle_hint">Attiva per registrare il periodo di riproduzione e le note</string>
+    <string name="photo_choose">Scegli foto</string>
+    <string name="photo_remove">Rimuovi foto</string>
     <string name="field_breeding_since">In riproduzione dal (AAAA-MM-GG)</string>
     <string name="field_breeding_end">Fine riproduzione (AAAA-MM-GG, facoltativa)</string>
     <string name="field_breeding_notes">Note particolari (facoltative)</string>

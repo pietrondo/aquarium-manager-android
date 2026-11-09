@@ -51,6 +51,8 @@ import org.json.JSONObject
 data class VerifiedBackupArchive(
     val manifest: BackupManifest,
     val snapshot: LibrarySnapshot,
+    /** JPEG bytes keyed by their file name (see [PhotoFiles]). */
+    val photos: Map<String, ByteArray> = emptyMap(),
 ) {
     fun toPreview(sourceUri: String? = null): BackupRestorePreview = BackupRestorePreview(
         formatVersion = manifest.formatVersion,
@@ -67,6 +69,8 @@ object LibraryBackupCodec {
     private const val MANIFEST_ENTRY_NAME = "manifest.json"
     private const val LIBRARY_ENTRY_NAME = "library.json"
     private val ALLOWED_ZIP_ENTRIES = setOf(MANIFEST_ENTRY_NAME, LIBRARY_ENTRY_NAME)
+    private const val MAX_PHOTO_ENTRIES = 1_000
+    private const val MAX_TOTAL_PHOTO_BYTES = 100L * 1024 * 1024
 
     private val MANIFEST_ROOT_KEYS = setOf(
         "format",
@@ -672,6 +676,8 @@ object LibraryBackupCodec {
     ): VerifiedBackupArchive {
         val countingStream = CountingInputStream(inputStream)
         val seenEntries = mutableSetOf<String>()
+        val photos = mutableMapOf<String, ByteArray>()
+        var totalPhotoBytes = 0L
         var manifestBytes: ByteArray? = null
         var libraryBytes: ByteArray? = null
 
@@ -691,7 +697,8 @@ object LibraryBackupCodec {
                 require(!name.contains('/') && !name.contains('\\') && !name.contains("..")) {
                     "Path traversal or subdirectory entry rejected in backup ZIP: $name"
                 }
-                require(name in ALLOWED_ZIP_ENTRIES) {
+                val isPhoto = PhotoFiles.isPhotoName(name)
+                require(name in ALLOWED_ZIP_ENTRIES || isPhoto) {
                     "Unexpected entry in backup ZIP: $name"
                 }
                 require(seenEntries.add(name)) {
@@ -702,7 +709,11 @@ object LibraryBackupCodec {
                     "Unsupported ZIP compression method for $name: $method"
                 }
 
-                val maxBytes = if (name == MANIFEST_ENTRY_NAME) MAX_MANIFEST_BYTES else MAX_LIBRARY_BYTES
+                val maxBytes = when (name) {
+                    MANIFEST_ENTRY_NAME -> MAX_MANIFEST_BYTES
+                    LIBRARY_ENTRY_NAME -> MAX_LIBRARY_BYTES
+                    else -> PhotoFiles.MAX_PHOTO_BYTES
+                }
                 val buffer = ByteArray(8 * 1024)
                 val out = ByteArrayOutputStream()
                 var totalUncompressed = 0L
@@ -742,15 +753,24 @@ object LibraryBackupCodec {
                     )
                 }
 
-                if (name == MANIFEST_ENTRY_NAME) {
-                    manifestBytes = out.toByteArray()
-                } else if (name == LIBRARY_ENTRY_NAME) {
-                    libraryBytes = out.toByteArray()
+                when {
+                    name == MANIFEST_ENTRY_NAME -> manifestBytes = out.toByteArray()
+                    name == LIBRARY_ENTRY_NAME -> libraryBytes = out.toByteArray()
+                    isPhoto -> {
+                        require(photos.size < MAX_PHOTO_ENTRIES) {
+                            "Backup ZIP has too many photo entries"
+                        }
+                        totalPhotoBytes += totalUncompressed
+                        require(totalPhotoBytes <= MAX_TOTAL_PHOTO_BYTES) {
+                            "Backup ZIP photos exceed the maximum total size"
+                        }
+                        photos[name] = out.toByteArray()
+                    }
                 }
             }
         }
 
-        require(seenEntries == ALLOWED_ZIP_ENTRIES) {
+        require(ALLOWED_ZIP_ENTRIES.all { it in seenEntries }) {
             val missing = ALLOWED_ZIP_ENTRIES - seenEntries
             "Backup ZIP is missing required entries: $missing"
         }
@@ -779,6 +799,7 @@ object LibraryBackupCodec {
         return VerifiedBackupArchive(
             manifest = manifest,
             snapshot = snapshot,
+            photos = photos,
         )
     }
 
@@ -788,6 +809,7 @@ object LibraryBackupCodec {
         appVersion: String,
         catalog: CatalogBundle,
         tempDir: File? = null,
+        photos: Map<String, ByteArray> = emptyMap(),
     ): Pair<ByteArray, BackupManifest> {
         validateLibrarySnapshot(snapshot, catalog)
         val libraryBytes = serializeLibraryJson(snapshot)
@@ -808,7 +830,7 @@ object LibraryBackupCodec {
             val tempFile = File(tempDir, "backup-stage-${UUID.randomUUID()}.zip.tmp")
             try {
                 tempFile.outputStream().use { fileOut ->
-                    writeZipEntries(fileOut, manifestBytes, libraryBytes)
+                    writeZipEntries(fileOut, manifestBytes, libraryBytes, photos)
                 }
                 val verified = tempFile.inputStream().use { fileIn ->
                     inspectAndParseZip(fileIn, catalog)
@@ -816,13 +838,16 @@ object LibraryBackupCodec {
                 require(verified.manifest.librarySha256 == manifest.librarySha256) {
                     "Temporary backup ZIP verification hash mismatch"
                 }
+                require(verified.photos.keys == photos.keys) {
+                    "Temporary backup ZIP photo entries mismatch"
+                }
                 return tempFile.readBytes() to verified.manifest
             } finally {
                 tempFile.delete()
             }
         } else {
             val out = ByteArrayOutputStream()
-            writeZipEntries(out, manifestBytes, libraryBytes)
+            writeZipEntries(out, manifestBytes, libraryBytes, photos)
             val zipBytes = out.toByteArray()
             val verified = inspectAndParseZip(ByteArrayInputStream(zipBytes), catalog)
             return zipBytes to verified.manifest
@@ -833,6 +858,7 @@ object LibraryBackupCodec {
         outputStream: java.io.OutputStream,
         manifestBytes: ByteArray,
         libraryBytes: ByteArray,
+        photos: Map<String, ByteArray>,
     ) {
         ZipOutputStream(outputStream).use { zip ->
             val manifestEntry = ZipEntry(MANIFEST_ENTRY_NAME)
@@ -844,6 +870,13 @@ object LibraryBackupCodec {
             zip.putNextEntry(libraryEntry)
             zip.write(libraryBytes)
             zip.closeEntry()
+
+            photos.toSortedMap().forEach { (name, bytes) ->
+                val photoEntry = ZipEntry(name)
+                zip.putNextEntry(photoEntry)
+                zip.write(bytes)
+                zip.closeEntry()
+            }
         }
     }
 

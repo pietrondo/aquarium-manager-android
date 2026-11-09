@@ -2,6 +2,7 @@ package com.pietrondo.aquariummanager.presentation
 
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -47,8 +48,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -71,6 +74,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pietrondo.aquariummanager.AppLanguage
 import com.pietrondo.aquariummanager.R
+import com.pietrondo.aquariummanager.readPhotoBytes
 import com.pietrondo.aquariummanager.nfc.NfcTagReader
 import com.pietrondo.aquariummanager.domain.APACHE_LICENSE_AND_NOTICES_TEXT
 import com.pietrondo.aquariummanager.domain.AquariumDetail
@@ -96,6 +100,7 @@ import com.pietrondo.aquariummanager.domain.SpeciesRank
 import com.pietrondo.aquariummanager.domain.StockEntryRecord
 import com.pietrondo.aquariummanager.domain.UNENCRYPTED_BACKUP_DISCLOSURE
 import com.pietrondo.aquariummanager.domain.WaterParameter
+import java.io.File
 import java.math.BigDecimal
 import java.net.URLDecoder
 import java.time.DayOfWeek
@@ -104,6 +109,9 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val OceanicColorScheme = lightColorScheme(
     primary = Color(0xFF006778),
@@ -195,6 +203,28 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                 // Best-effort persistable URI permission grant
             }
             viewModel.setAutoBackupTreeUri(treeUri.toString())
+        }
+    }
+
+    val photoScope = rememberCoroutineScope()
+    val aquariumPhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri != null) {
+            photoScope.launch {
+                val bytes = withContext(Dispatchers.IO) { readPhotoBytes(context, uri) }
+                if (bytes != null) viewModel.setAquariumPhoto(bytes)
+            }
+        }
+    }
+    val eventPhotoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri != null) {
+            photoScope.launch {
+                val bytes = withContext(Dispatchers.IO) { readPhotoBytes(context, uri) }
+                if (bytes != null) viewModel.setEventPhoto(bytes)
+            }
         }
     }
 
@@ -462,6 +492,8 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                                 onUnbindNfcTag = viewModel::unbindNfcTag,
                                 onCreateAquariumWithNfcTag = viewModel::createAquariumFromNfcTag,
                                 onDismissNfcStatus = viewModel::dismissNfcStatus,
+                                photoFileForAquarium = viewModel::aquariumPhotoFile,
+                                photoFileForEvent = viewModel::maintenanceEventPhotoFile,
                             )
                         }
 
@@ -576,6 +608,13 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                         AquariumEditorDialog(
                             editor = editor,
                             availableProfiles = current.availableProfiles,
+                            photoFile = editor.editingAquariumId?.let(viewModel::aquariumPhotoFile),
+                            onPickPhoto = {
+                                aquariumPhotoLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            },
+                            onRemovePhoto = viewModel::removeAquariumPhoto,
                             onDismiss = viewModel::closeEditor,
                             onNameChange = viewModel::updateNameInput,
                             onNetLitresChange = viewModel::updateNetLitresInput,
@@ -636,6 +675,11 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                             onDismiss = viewModel::closeEventEditor,
                             onNotesChange = viewModel::updateEventNotesInput,
                             onDateChange = viewModel::updateEventDateInput,
+                            onPickPhoto = {
+                                eventPhotoLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            },
                             onSave = viewModel::saveEvent,
                         )
                     }
@@ -679,6 +723,8 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                                 tags = current.nfcTagBindings.filter { it.aquariumId == identifiedId },
                                 events = current.activeAquariumEvents
                                     .filter { it.aquariumId == identifiedId },
+                                photoFile = viewModel.aquariumPhotoFile(identifiedId),
+                                photoFileForEvent = viewModel::maintenanceEventPhotoFile,
                                 onAction = viewModel::runNfcQuickAction,
                                 onDismiss = viewModel::dismissIdentifiedAquarium,
                             )
@@ -751,6 +797,8 @@ private fun AquariumsOverviewTab(
     onUnbindNfcTag: (String) -> Unit,
     onCreateAquariumWithNfcTag: (String) -> Unit,
     onDismissNfcStatus: () -> Unit,
+    photoFileForAquarium: (UUID) -> File?,
+    photoFileForEvent: (UUID) -> File?,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         SectionHeader(
@@ -795,6 +843,8 @@ private fun AquariumsOverviewTab(
                     onOpenMaintenance = { onOpenMaintenance(aquarium.id) },
                     events = if (state.activeAquariumId == aquarium.id) state.activeAquariumEvents else emptyList(),
                     onAddEvent = { onAddEvent(aquarium.id) },
+                    photoFile = photoFileForAquarium(aquarium.id),
+                    photoFileForEvent = photoFileForEvent,
                 )
             }
 
@@ -1394,6 +1444,8 @@ private fun AquariumDetailCard(
     onOpenMaintenance: () -> Unit,
     events: List<MaintenanceRecord>,
     onAddEvent: () -> Unit,
+    photoFile: File?,
+    photoFileForEvent: (UUID) -> File?,
 ) {
     ElevatedCard(
         onClick = onSelect,
@@ -1410,6 +1462,16 @@ private fun AquariumDetailCard(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            if (photoFile != null) {
+                PhotoImage(
+                    bytes = null,
+                    file = photoFile,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .clip(MaterialTheme.shapes.medium),
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1471,7 +1533,11 @@ private fun AquariumDetailCard(
             }
 
             if (isSelected) {
-                AquariumEventsSection(events = events, onAddEvent = onAddEvent)
+                AquariumEventsSection(
+                    events = events,
+                    onAddEvent = onAddEvent,
+                    photoFileForEvent = photoFileForEvent,
+                )
             }
 
             Row(
@@ -1518,6 +1584,7 @@ private fun AquariumDetailCard(
 private fun AquariumEventsSection(
     events: List<MaintenanceRecord>,
     onAddEvent: () -> Unit,
+    photoFileForEvent: (UUID) -> File?,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
@@ -1542,11 +1609,26 @@ private fun AquariumEventsSection(
             )
         } else {
             events.take(RECENT_EVENTS_LIMIT).forEach { event ->
-                Text(
-                    text = "${EventDateFormatter.format(event.occurredAt)} · ${event.notes.orEmpty()}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    photoFileForEvent(event.id)?.let { photoFile ->
+                        PhotoImage(
+                            bytes = null,
+                            file = photoFile,
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(MaterialTheme.shapes.small),
+                        )
+                    }
+                    Text(
+                        text = "${EventDateFormatter.format(event.occurredAt)} · ${event.notes.orEmpty()}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
@@ -1558,6 +1640,8 @@ private fun IdentifiedAquariumDialog(
     aquarium: AquariumDetail,
     tags: List<NfcTagBinding>,
     events: List<MaintenanceRecord>,
+    photoFile: File?,
+    photoFileForEvent: (UUID) -> File?,
     onAction: (NfcQuickAction) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -1593,6 +1677,16 @@ private fun IdentifiedAquariumDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                if (photoFile != null) {
+                    PhotoImage(
+                        bytes = null,
+                        file = photoFile,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                            .clip(MaterialTheme.shapes.medium),
+                    )
+                }
                 if (aquarium.profiles.isNotEmpty()) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1621,6 +1715,7 @@ private fun IdentifiedAquariumDialog(
                 AquariumEventsSection(
                     events = events,
                     onAddEvent = { onAction(NfcQuickAction.EVENT) },
+                    photoFileForEvent = photoFileForEvent,
                 )
 
                 Text(
@@ -1988,6 +2083,7 @@ private fun EventEditorDialog(
     onDismiss: () -> Unit,
     onNotesChange: (String) -> Unit,
     onDateChange: (String) -> Unit,
+    onPickPhoto: () -> Unit,
     onSave: () -> Unit,
 ) {
     AlertDialog(
@@ -2049,6 +2145,20 @@ private fun EventEditorDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+
+                if (editor.photoBytes != null) {
+                    PhotoImage(
+                        bytes = editor.photoBytes,
+                        file = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                            .clip(MaterialTheme.shapes.medium),
+                    )
+                }
+                OutlinedButton(onClick = onPickPhoto) {
+                    Text(stringResource(R.string.photo_choose))
+                }
             }
         },
         confirmButton = {
@@ -2069,6 +2179,9 @@ private fun EventEditorDialog(
 private fun AquariumEditorDialog(
     editor: AquariumEditorState,
     availableProfiles: List<AquariumProfile>,
+    photoFile: File?,
+    onPickPhoto: () -> Unit,
+    onRemovePhoto: () -> Unit,
     onDismiss: () -> Unit,
     onNameChange: (String) -> Unit,
     onNetLitresChange: (String) -> Unit,
@@ -2114,6 +2227,32 @@ private fun AquariumEditorDialog(
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(12.dp),
                         )
+                    }
+                }
+
+                val shownPhoto = editor.photoBytes ?: photoFile?.takeUnless { editor.photoRemoved }
+                if (shownPhoto != null) {
+                    PhotoImage(
+                        bytes = editor.photoBytes,
+                        file = photoFile?.takeUnless { editor.photoRemoved },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(MaterialTheme.shapes.medium),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(onClick = onPickPhoto) {
+                        Text(stringResource(R.string.photo_choose))
+                    }
+                    if (shownPhoto != null) {
+                        TextButton(onClick = onRemovePhoto) {
+                            Text(stringResource(R.string.photo_remove))
+                        }
                     }
                 }
 
