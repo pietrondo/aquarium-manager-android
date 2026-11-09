@@ -92,6 +92,8 @@ data class AquariumEditorState(
     /** True while the animals of this aquarium are breeding. */
     val isBreeding: Boolean = false,
     val breedingSinceInput: String = "",
+    /** Optional end of the breeding period: saving it closes the period as an event. */
+    val breedingEndInput: String = "",
     val breedingNotesInput: String = "",
 )
 
@@ -739,6 +741,10 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
         updateEditor { it.copy(breedingSinceInput = value, validationError = null) }
     }
 
+    fun updateBreedingEndInput(value: String) {
+        updateEditor { it.copy(breedingEndInput = value, validationError = null) }
+    }
+
     fun updateBreedingNotesInput(value: String) {
         updateEditor { it.copy(breedingNotesInput = value, validationError = null) }
     }
@@ -783,7 +789,7 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
         }
     }
 
-    fun saveAquarium() {
+    fun saveAquarium(breedingEndEventNote: String? = null) {
         val current = mutableState.value as? AquariumListState.Success ?: return
         val editor = current.editorState ?: return
         if (editor.isSaving) return
@@ -808,18 +814,35 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
             return
         }
 
-        val breedingSince = if (!editor.isBreeding) {
-            null
-        } else {
-            try {
+        val breedingStart = try {
+            if (!editor.isBreeding) {
+                null
+            } else {
                 parseRequiredLocalDate(editor.breedingSinceInput, "Breeding start date")
-                    .atStartOfDay(ZoneOffset.UTC)
-                    .toInstant()
-            } catch (e: IllegalArgumentException) {
-                updateEditor { it.copy(validationError = e.message) }
-                return
             }
+        } catch (e: IllegalArgumentException) {
+            updateEditor { it.copy(validationError = e.message) }
+            return
         }
+
+        // Filling the end date closes the period: the start is cleared and the whole
+        // period is written to the event log below.
+        val breedingEnd = try {
+            if (!editor.isBreeding || editor.breedingEndInput.isBlank()) {
+                null
+            } else {
+                parseRequiredLocalDate(editor.breedingEndInput, "Breeding end date")
+            }
+        } catch (e: IllegalArgumentException) {
+            updateEditor { it.copy(validationError = e.message) }
+            return
+        }
+        if (breedingStart != null && breedingEnd != null && breedingEnd.isBefore(breedingStart)) {
+            updateEditor { it.copy(validationError = "Breeding end date cannot be before the start date.") }
+            return
+        }
+        val closesBreeding = breedingEnd != null
+        val breedingEndInstant = breedingEnd?.atStartOfDay(ZoneId.systemDefault())?.toInstant()
 
         val draft = try {
             AquariumDraft(
@@ -828,8 +851,12 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                 grossLitres = grossLitres,
                 notes = editor.notesInput.trim().takeIf { it.isNotEmpty() },
                 profileIds = editor.selectedProfileIds,
-                breedingSince = breedingSince,
-                breedingNotes = editor.breedingNotesInput.trim().takeIf { it.isNotEmpty() },
+                breedingSince = breedingStart
+                    ?.takeUnless { closesBreeding }
+                    ?.atStartOfDay(ZoneOffset.UTC)
+                    ?.toInstant(),
+                breedingNotes = editor.breedingNotesInput.trim()
+                    .takeIf { it.isNotEmpty() && !closesBreeding },
             )
         } catch (e: IllegalArgumentException) {
             updateEditor { it.copy(validationError = e.message ?: "Invalid aquarium values.") }
@@ -850,6 +877,22 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                 // from the moment the aquarium exists.
                 editor.nfcTagToBind?.let { tagId ->
                     repository.bindNfcTag(savedId, tagId)
+                }
+                // Closing a running breeding period leaves a dated event in the log.
+                val wasBreeding = editingId != null &&
+                    current.aquariumDetails.firstOrNull { it.id == editingId }?.breedingSince != null
+                if (breedingEnd != null && breedingEndInstant != null && wasBreeding) {
+                    val note = breedingEndEventNote?.takeIf { it.isNotBlank() }
+                        ?: "Breeding: ${breedingStart ?: "?"} to $breedingEnd"
+                    val breedingNotes = editor.breedingNotesInput.trim().takeIf { it.isNotEmpty() }
+                    repository.recordMaintenanceEvent(
+                        savedId,
+                        MaintenanceDraft(
+                            type = AQUARIUM_EVENT_TYPE_CODE,
+                            occurredAt = breedingEndInstant,
+                            notes = listOfNotNull(note, breedingNotes).joinToString(" · "),
+                        ),
+                    )
                 }
                 selectedAquariumIdFlow.value = savedId
                 updateSuccess {

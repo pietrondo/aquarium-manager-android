@@ -243,6 +243,44 @@ class AquariumListViewModelTest {
     }
 
     @Test
+    fun closingTheBreedingPeriodLogsItAsAnEvent() = runTest {
+        val repo = fakeCrudRepository()
+        val vm = AquariumListViewModel(repo).also { store.put("breeding", it) }
+        runCurrent()
+
+        vm.openCreateEditor()
+        vm.updateNameInput("Breeding Tank")
+        vm.setBreeding(true)
+        vm.updateBreedingSinceInput("2026-11-01")
+        vm.saveAquarium()
+        runCurrent()
+
+        val breeding = (vm.state.value as AquariumListState.Success).aquariumDetails.single()
+        assertTrue(breeding.isBreeding)
+
+        // An end date before the start is rejected and keeps the dialog open.
+        vm.openEditEditor(breeding.id)
+        vm.updateBreedingEndInput("2026-10-31")
+        vm.saveAquarium()
+        runCurrent()
+        assertNotNull((vm.state.value as AquariumListState.Success).editorState?.validationError)
+
+        vm.updateBreedingEndInput("2026-11-05")
+        vm.saveAquarium("Riproduzione dal 2026-11-01 al 2026-11-05")
+        runCurrent()
+
+        val state = vm.state.value as AquariumListState.Success
+        assertNull(state.editorState)
+        assertFalse(state.aquariumDetails.single().isBreeding)
+        val event = state.activeAquariumEvents.single()
+        assertEquals("Riproduzione dal 2026-11-01 al 2026-11-05", event.notes)
+        assertEquals(
+            LocalDate.parse("2026-11-05").atStartOfDay(ZoneId.systemDefault()).toInstant(),
+            event.occurredAt,
+        )
+    }
+
+    @Test
     fun validationFailurePreservesTypedInputAndSelectedProfiles() = runTest {
         val repo = fakeCrudRepository()
         val vm = AquariumListViewModel(repo).also { store.put("validation", it) }
@@ -1082,6 +1120,8 @@ private class FakeAquariumRepository : AquariumRepository {
             notes = draft.notes?.trim()?.takeIf { it.isNotEmpty() },
             createdAt = Instant.EPOCH,
             profiles = assigned,
+            breedingSince = draft.breedingSince,
+            breedingNotes = draft.breedingNotes,
         )
         aquariumsFlow.value = (aquariumsFlow.value + detail).sortedBy { it.name }
         return id
@@ -1099,6 +1139,8 @@ private class FakeAquariumRepository : AquariumRepository {
                     grossLitres = draft.grossLitres,
                     notes = draft.notes?.trim()?.takeIf { it.isNotEmpty() },
                     profiles = assigned,
+                    breedingSince = draft.breedingSince,
+                    breedingNotes = draft.breedingNotes,
                 )
             } else {
                 existing

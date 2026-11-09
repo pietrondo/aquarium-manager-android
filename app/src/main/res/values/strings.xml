@@ -168,7 +168,9 @@
     <string name="breeding_toggle">Animals are breeding</string>
     <string name="breeding_toggle_hint">Turn on to record the breeding period and its notes</string>
     <string name="field_breeding_since">Breeding since (YYYY-MM-DD)</string>
+    <string name="field_breeding_end">Breeding ended (YYYY-MM-DD, optional)</string>
     <string name="field_breeding_notes">Breeding notes (optional)</string>
+    <string name="breeding_end_event_note">Breeding from %1$s to %2$s</string>
     <string name="breeding_badge">Breeding in progress</string>
     <string name="breeding_badge_since">Breeding since %1$s</string>
     <string name="section_profiles_help">Tags describe the tank. Pick how many you need or create a new one.</string>

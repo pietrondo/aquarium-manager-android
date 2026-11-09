@@ -269,7 +269,9 @@
     <string name="breeding_toggle">Animali in riproduzione</string>
     <string name="breeding_toggle_hint">Attiva per registrare il periodo di riproduzione e le note</string>
     <string name="field_breeding_since">In riproduzione dal (AAAA-MM-GG)</string>
+    <string name="field_breeding_end">Fine riproduzione (AAAA-MM-GG, facoltativa)</string>
     <string name="field_breeding_notes">Note particolari (facoltative)</string>
+    <string name="breeding_end_event_note">Riproduzione dal %1$s al %2$s</string>
     <string name="breeding_badge">Riproduzione in corso</string>
     <string name="breeding_badge_since">In riproduzione dal %1$s</string>
 </resources>

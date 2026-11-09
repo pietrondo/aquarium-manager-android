@@ -561,6 +561,18 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                     }
 
                     current.editorState?.let { editor ->
+                        // The note is composed here so the stored event follows the UI language.
+                        val breedingEndEventNote = if (
+                            editor.isBreeding && editor.breedingEndInput.isNotBlank()
+                        ) {
+                            stringResource(
+                                R.string.breeding_end_event_note,
+                                editor.breedingSinceInput,
+                                editor.breedingEndInput,
+                            )
+                        } else {
+                            null
+                        }
                         AquariumEditorDialog(
                             editor = editor,
                             availableProfiles = current.availableProfiles,
@@ -574,8 +586,9 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                             onAddCustomProfile = viewModel::addCustomProfile,
                             onBreedingChange = viewModel::setBreeding,
                             onBreedingSinceChange = viewModel::updateBreedingSinceInput,
+                            onBreedingEndChange = viewModel::updateBreedingEndInput,
                             onBreedingNotesChange = viewModel::updateBreedingNotesInput,
-                            onSave = viewModel::saveAquarium,
+                            onSave = { viewModel.saveAquarium(breedingEndEventNote) },
                         )
                     }
 
@@ -746,54 +759,47 @@ private fun AquariumsOverviewTab(
             subtitle = stringResource(R.string.aquariums_subtitle),
         )
 
-        if (state.aquariumDetails.isEmpty()) {
-            EmptyAquariumCard(onCreateFirst = onCreateFirst)
-            // The NFC card stays reachable: a fresh tag can create the first aquarium.
-            NfcTagCard(
-                state = state,
-                isNfcAvailable = isNfcAvailable,
-                isNfcEnabled = isNfcEnabled,
-                onIdentifyTag = onIdentifyNfcTag,
-                onCancelIdentification = onCancelNfcIdentification,
-                onAssignTag = onAssignNfcTag,
-                onCancelAssignment = onCancelNfcAssignment,
-                onUnbindTag = onUnbindNfcTag,
-                onCreateAquariumWithTag = onCreateAquariumWithNfcTag,
-                onDismissStatus = onDismissNfcStatus,
-            )
-        } else {
-            NfcTagCard(
-                state = state,
-                isNfcAvailable = isNfcAvailable,
-                isNfcEnabled = isNfcEnabled,
-                onIdentifyTag = onIdentifyNfcTag,
-                onCancelIdentification = onCancelNfcIdentification,
-                onAssignTag = onAssignNfcTag,
-                onCancelAssignment = onCancelNfcAssignment,
-                onUnbindTag = onUnbindNfcTag,
-                onCreateAquariumWithTag = onCreateAquariumWithNfcTag,
-                onDismissStatus = onDismissNfcStatus,
-            )
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                items(state.aquariumDetails, key = { it.id.toString() }) { aquarium ->
-                    AquariumDetailCard(
-                        aquarium = aquarium,
-                        isSelected = state.activeAquariumId == aquarium.id,
-                        onSelect = { onSelectAquarium(aquarium.id) },
-                        onEdit = { onEditAquarium(aquarium.id) },
-                        onDelete = { onDeleteAquarium(aquarium.id) },
-                        onOpenWaterTests = { onOpenWaterTests(aquarium.id) },
-                        onOpenMaintenance = { onOpenMaintenance(aquarium.id) },
-                        events = if (state.activeAquariumId == aquarium.id) state.activeAquariumEvents else emptyList(),
-                        onAddEvent = { onAddEvent(aquarium.id) },
-                    )
-                }
-                item {
-                    Spacer(modifier = Modifier.height(72.dp))
-                }
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            if (state.aquariumDetails.isEmpty()) {
+                item { EmptyAquariumCard(onCreateFirst = onCreateFirst) }
+            }
+
+            // The card scrolls with the tab: a long tag list can no longer push the
+            // aquarium list off the screen.
+            item {
+                NfcTagCard(
+                    state = state,
+                    isNfcAvailable = isNfcAvailable,
+                    isNfcEnabled = isNfcEnabled,
+                    onIdentifyTag = onIdentifyNfcTag,
+                    onCancelIdentification = onCancelNfcIdentification,
+                    onAssignTag = onAssignNfcTag,
+                    onCancelAssignment = onCancelNfcAssignment,
+                    onUnbindTag = onUnbindNfcTag,
+                    onCreateAquariumWithTag = onCreateAquariumWithNfcTag,
+                    onDismissStatus = onDismissNfcStatus,
+                )
+            }
+
+            items(state.aquariumDetails, key = { it.id.toString() }) { aquarium ->
+                AquariumDetailCard(
+                    aquarium = aquarium,
+                    isSelected = state.activeAquariumId == aquarium.id,
+                    onSelect = { onSelectAquarium(aquarium.id) },
+                    onEdit = { onEditAquarium(aquarium.id) },
+                    onDelete = { onDeleteAquarium(aquarium.id) },
+                    onOpenWaterTests = { onOpenWaterTests(aquarium.id) },
+                    onOpenMaintenance = { onOpenMaintenance(aquarium.id) },
+                    events = if (state.activeAquariumId == aquarium.id) state.activeAquariumEvents else emptyList(),
+                    onAddEvent = { onAddEvent(aquarium.id) },
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(72.dp))
             }
         }
     }
@@ -1473,12 +1479,21 @@ private fun AquariumDetailCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                FlowRow(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     TextButton(onClick = onOpenWaterTests) {
                         Text(stringResource(R.string.nav_tests))
                     }
                     TextButton(onClick = onOpenMaintenance) {
                         Text(stringResource(R.string.nav_maintenance))
+                    }
+                    // Events are reachable from every card, no tag scan needed.
+                    if (!isSelected) {
+                        TextButton(onClick = onAddEvent) {
+                            Text(stringResource(R.string.add_event))
+                        }
                     }
                 }
                 Row {
@@ -2064,6 +2079,7 @@ private fun AquariumEditorDialog(
     onAddCustomProfile: () -> Unit,
     onBreedingChange: (Boolean) -> Unit,
     onBreedingSinceChange: (String) -> Unit,
+    onBreedingEndChange: (String) -> Unit,
     onBreedingNotesChange: (String) -> Unit,
     onSave: () -> Unit,
 ) {
@@ -2219,6 +2235,16 @@ private fun AquariumEditorDialog(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (editor.editingAquariumId != null) {
+                        // Filling this closes the period and logs it as an event.
+                        OutlinedTextField(
+                            value = editor.breedingEndInput,
+                            onValueChange = onBreedingEndChange,
+                            label = { Text(stringResource(R.string.field_breeding_end)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                     OutlinedTextField(
                         value = editor.breedingNotesInput,
                         onValueChange = onBreedingNotesChange,
