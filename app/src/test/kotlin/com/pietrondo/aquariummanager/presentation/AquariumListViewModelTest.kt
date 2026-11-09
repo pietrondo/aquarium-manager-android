@@ -17,6 +17,8 @@ import com.pietrondo.aquariummanager.domain.WaterParameter
 import com.pietrondo.aquariummanager.domain.validateNonBlank
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -212,6 +214,32 @@ class AquariumListViewModelTest {
         val event = state.activeAquariumEvents.single()
         assertEquals(AQUARIUM_EVENT_TYPE_CODE, event.type)
         assertEquals("Ampullarie hanno deposto le uova", event.notes)
+
+        // A backdated event keeps the chosen day instead of the save time
+        vm.openEventEditor()
+        assertEquals(
+            LocalDate.now().toString(),
+            (vm.state.value as AquariumListState.Success).eventEditorState?.dateInput,
+        )
+        vm.updateEventNotesInput("Uova avvistate")
+        vm.updateEventDateInput("2026-11-01")
+        vm.saveEvent()
+        runCurrent()
+
+        val backdated = (vm.state.value as AquariumListState.Success)
+            .activeAquariumEvents.first { it.notes == "Uova avvistate" }
+        assertEquals(
+            LocalDate.parse("2026-11-01").atStartOfDay(ZoneId.systemDefault()).toInstant(),
+            backdated.occurredAt,
+        )
+
+        // An unparsable date is rejected and keeps the dialog open
+        vm.openEventEditor()
+        vm.updateEventNotesInput("Data sbagliata")
+        vm.updateEventDateInput("ieri")
+        vm.saveEvent()
+        runCurrent()
+        assertNotNull((vm.state.value as AquariumListState.Success).eventEditorState?.validationError)
     }
 
     @Test

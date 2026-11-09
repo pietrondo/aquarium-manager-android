@@ -100,6 +100,7 @@ import java.math.BigDecimal
 import java.net.URLDecoder
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -131,6 +132,10 @@ private val OceanicColorScheme = lightColorScheme(
 
 private val UtcTimestampFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm 'UTC'").withZone(ZoneOffset.UTC)
+
+/** Event days are shown in the phone time zone, the time of day is irrelevant. */
+private val EventDateFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault())
 
 /** How many events the compact aquarium card shows before deferring to the full log. */
 private const val RECENT_EVENTS_LIMIT = 3
@@ -617,6 +622,7 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                             aquariumName = current.activeAquarium?.name.orEmpty(),
                             onDismiss = viewModel::closeEventEditor,
                             onNotesChange = viewModel::updateEventNotesInput,
+                            onDateChange = viewModel::updateEventDateInput,
                             onSave = viewModel::saveEvent,
                         )
                     }
@@ -1522,7 +1528,7 @@ private fun AquariumEventsSection(
         } else {
             events.take(RECENT_EVENTS_LIMIT).forEach { event ->
                 Text(
-                    text = "${formatTimestamp(event.occurredAt)} · ${event.notes.orEmpty()}",
+                    text = "${EventDateFormatter.format(event.occurredAt)} · ${event.notes.orEmpty()}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1966,6 +1972,7 @@ private fun EventEditorDialog(
     aquariumName: String,
     onDismiss: () -> Unit,
     onNotesChange: (String) -> Unit,
+    onDateChange: (String) -> Unit,
     onSave: () -> Unit,
 ) {
     AlertDialog(
@@ -2017,6 +2024,14 @@ private fun EventEditorDialog(
                     value = editor.notesInput,
                     onValueChange = onNotesChange,
                     label = { Text(stringResource(R.string.field_event_description)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                OutlinedTextField(
+                    value = editor.dateInput,
+                    onValueChange = onDateChange,
+                    label = { Text(stringResource(R.string.field_event_date)) },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

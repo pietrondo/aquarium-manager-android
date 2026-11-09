@@ -54,6 +54,7 @@
     <string name="events_empty">No events logged yet.</string>
     <string name="event_create_title">New Event</string>
     <string name="field_event_description">What happened *</string>
+    <string name="field_event_date">Date (YYYY-MM-DD)</string>
     <string name="event_dialog_hint">Write what happened, for example the temperature was raised to trigger breeding or eggs were spotted.</string>
     <string name="nav_livestock">Livestock</string>
     <string name="livestock_title">Livestock &amp; Dosing</string>

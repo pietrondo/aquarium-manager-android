@@ -55,6 +55,7 @@
     <string name="events_empty">Nessun evento registrato.</string>
     <string name="event_create_title">Nuovo evento</string>
     <string name="field_event_description">Cosa è successo *</string>
+    <string name="field_event_date">Data (AAAA-MM-GG)</string>
     <string name="event_dialog_hint">Scrivi cosa è successo, ad esempio temperatura alzata per indurre la riproduzione o uova avvistate.</string>
     <string name="nav_livestock">Fauna</string>
     <string name="livestock_title">Fauna e dosaggi</string>

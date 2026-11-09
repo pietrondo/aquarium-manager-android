@@ -117,9 +117,10 @@ data class MaintenanceEditorState(
     val isSaving: Boolean = false,
 )
 
-/** The free-form event log entry: only what happened matters, the timestamp is the save time. */
+/** The free-form event log entry: what happened plus the day it happened (backdating allowed). */
 data class EventEditorState(
     val notesInput: String = "",
+    val dateInput: String = "",
     val validationError: String? = null,
     val isSaving: Boolean = false,
 )
@@ -1167,7 +1168,12 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
     fun openEventEditor() {
         val current = mutableState.value as? AquariumListState.Success ?: return
         if (current.activeAquariumId == null) return
-        updateSuccess { it.copy(eventEditorState = EventEditorState(), actionError = null) }
+        updateSuccess {
+            it.copy(
+                eventEditorState = EventEditorState(dateInput = LocalDate.now().toString()),
+                actionError = null,
+            )
+        }
     }
 
     fun closeEventEditor() {
@@ -1176,6 +1182,10 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
 
     fun updateEventNotesInput(value: String) {
         updateEventEditor { it.copy(notesInput = value, validationError = null) }
+    }
+
+    fun updateEventDateInput(value: String) {
+        updateEventEditor { it.copy(dateInput = value, validationError = null) }
     }
 
     fun saveEvent() {
@@ -1190,8 +1200,26 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
             return
         }
 
+        // A blank date means "now"; anything else is a backdated day.
+        val occurredAt = if (editor.dateInput.isBlank()) {
+            null
+        } else {
+            try {
+                parseRequiredLocalDate(editor.dateInput, "Event date")
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+            } catch (e: IllegalArgumentException) {
+                updateEventEditor { it.copy(validationError = e.message) }
+                return
+            }
+        }
+
         val draft = try {
-            MaintenanceDraft(type = AQUARIUM_EVENT_TYPE_CODE, notes = notes)
+            MaintenanceDraft(
+                type = AQUARIUM_EVENT_TYPE_CODE,
+                occurredAt = occurredAt,
+                notes = notes,
+            )
         } catch (e: IllegalArgumentException) {
             updateEventEditor { it.copy(validationError = e.message ?: "Invalid event.") }
             return
