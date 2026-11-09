@@ -132,6 +132,9 @@ private val OceanicColorScheme = lightColorScheme(
 private val UtcTimestampFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm 'UTC'").withZone(ZoneOffset.UTC)
 
+/** How many events the compact aquarium card shows before deferring to the full log. */
+private const val RECENT_EVENTS_LIMIT = 3
+
 @Composable
 fun AquariumTheme(content: @Composable () -> Unit) {
     MaterialTheme(
@@ -441,6 +444,10 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                                     viewModel.selectAquarium(id)
                                     viewModel.selectTab(AppTab.MAINTENANCE)
                                 },
+                                onAddEvent = { id ->
+                                    viewModel.selectAquarium(id)
+                                    viewModel.openEventEditor()
+                                },
                                 isNfcAvailable = isNfcAvailable,
                                 isNfcEnabled = isNfcEnabled.value,
                                 onIdentifyNfcTag = viewModel::startNfcIdentification,
@@ -604,6 +611,16 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                         )
                     }
 
+                    current.eventEditorState?.let { eventEditor ->
+                        EventEditorDialog(
+                            editor = eventEditor,
+                            aquariumName = current.activeAquarium?.name.orEmpty(),
+                            onDismiss = viewModel::closeEventEditor,
+                            onNotesChange = viewModel::updateEventNotesInput,
+                            onSave = viewModel::saveEvent,
+                        )
+                    }
+
                     current.speciesEditorState?.let { speciesEditor ->
                         SpeciesEditorDialog(
                             editor = speciesEditor,
@@ -641,6 +658,8 @@ fun AquariumListScreen(viewModel: AquariumListViewModel) {
                             IdentifiedAquariumDialog(
                                 aquarium = identified,
                                 tags = current.nfcTagBindings.filter { it.aquariumId == identifiedId },
+                                events = current.activeAquariumEvents
+                                    .filter { it.aquariumId == identifiedId },
                                 onAction = viewModel::runNfcQuickAction,
                                 onDismiss = viewModel::dismissIdentifiedAquarium,
                             )
@@ -703,6 +722,7 @@ private fun AquariumsOverviewTab(
     onDeleteAquarium: (UUID) -> Unit,
     onOpenWaterTests: (UUID) -> Unit,
     onOpenMaintenance: (UUID) -> Unit,
+    onAddEvent: (UUID) -> Unit,
     isNfcAvailable: Boolean,
     isNfcEnabled: Boolean,
     onIdentifyNfcTag: () -> Unit,
@@ -761,6 +781,8 @@ private fun AquariumsOverviewTab(
                         onDelete = { onDeleteAquarium(aquarium.id) },
                         onOpenWaterTests = { onOpenWaterTests(aquarium.id) },
                         onOpenMaintenance = { onOpenMaintenance(aquarium.id) },
+                        events = if (state.activeAquariumId == aquarium.id) state.activeAquariumEvents else emptyList(),
+                        onAddEvent = { onAddEvent(aquarium.id) },
                     )
                 }
                 item {
@@ -1358,6 +1380,8 @@ private fun AquariumDetailCard(
     onDelete: () -> Unit,
     onOpenWaterTests: () -> Unit,
     onOpenMaintenance: () -> Unit,
+    events: List<MaintenanceRecord>,
+    onAddEvent: () -> Unit,
 ) {
     ElevatedCard(
         onClick = onSelect,
@@ -1434,6 +1458,10 @@ private fun AquariumDetailCard(
                 )
             }
 
+            if (isSelected) {
+                AquariumEventsSection(events = events, onAddEvent = onAddEvent)
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1465,11 +1493,50 @@ private fun AquariumDetailCard(
     }
 }
 
+@Composable
+private fun AquariumEventsSection(
+    events: List<MaintenanceRecord>,
+    onAddEvent: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.events_heading),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            TextButton(onClick = onAddEvent) {
+                Text(stringResource(R.string.add_event))
+            }
+        }
+        if (events.isEmpty()) {
+            Text(
+                text = stringResource(R.string.events_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            events.take(RECENT_EVENTS_LIMIT).forEach { event ->
+                Text(
+                    text = "${formatTimestamp(event.occurredAt)} · ${event.notes.orEmpty()}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun IdentifiedAquariumDialog(
     aquarium: AquariumDetail,
     tags: List<NfcTagBinding>,
+    events: List<MaintenanceRecord>,
     onAction: (NfcQuickAction) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -1529,6 +1596,11 @@ private fun IdentifiedAquariumDialog(
                         notes = aquarium.breedingNotes,
                     )
                 }
+
+                AquariumEventsSection(
+                    events = events,
+                    onAddEvent = { onAction(NfcQuickAction.EVENT) },
+                )
 
                 Text(
                     text = stringResource(R.string.nfc_quick_actions_title),
@@ -1871,6 +1943,80 @@ private fun MaintenanceEditorDialog(
                     value = editor.notesInput,
                     onValueChange = onNotesChange,
                     label = { Text(stringResource(R.string.field_notes)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onSave, enabled = !editor.isSaving) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun EventEditorDialog(
+    editor: EventEditorState,
+    aquariumName: String,
+    onDismiss: () -> Unit,
+    onNotesChange: (String) -> Unit,
+    onSave: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = stringResource(R.string.event_create_title),
+                    fontWeight = FontWeight.Bold,
+                )
+                if (aquariumName.isNotEmpty()) {
+                    Text(
+                        text = aquariumName,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.event_dialog_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                editor.validationError?.let { errorText ->
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text = errorText,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp),
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = editor.notesInput,
+                    onValueChange = onNotesChange,
+                    label = { Text(stringResource(R.string.field_event_description)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

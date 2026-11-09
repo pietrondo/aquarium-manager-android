@@ -2,6 +2,7 @@ package com.pietrondo.aquariummanager.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pietrondo.aquariummanager.domain.AQUARIUM_EVENT_TYPE_CODE
 import com.pietrondo.aquariummanager.domain.AquariumDetail
 import com.pietrondo.aquariummanager.domain.AquariumDraft
 import com.pietrondo.aquariummanager.domain.AquariumProfile
@@ -71,6 +72,7 @@ enum class NfcQuickAction {
     WATER_TEST,
     FOOD,
     MAINTENANCE,
+    EVENT,
     EDIT_AQUARIUM,
 }
 
@@ -111,6 +113,13 @@ data class MaintenanceEditorState(
     val changedLitresInput: String = "",
     val notesInput: String = "",
     val volumeWarning: String? = null,
+    val validationError: String? = null,
+    val isSaving: Boolean = false,
+)
+
+/** The free-form event log entry: only what happened matters, the timestamp is the save time. */
+data class EventEditorState(
+    val notesInput: String = "",
     val validationError: String? = null,
     val isSaving: Boolean = false,
 )
@@ -206,6 +215,7 @@ sealed interface AquariumListState {
         val dosingEvents: List<DosingEventRecord> = emptyList(),
         val measurementEditorState: MeasurementEditorState? = null,
         val maintenanceEditorState: MaintenanceEditorState? = null,
+        val eventEditorState: EventEditorState? = null,
         val speciesEditorState: SpeciesEditorState? = null,
         val stockEditorState: StockEditorState? = null,
         val productEditorState: ProductEditorState? = null,
@@ -262,6 +272,10 @@ sealed interface AquariumListState {
 
         val activeAquariumNfcTags: List<NfcTagBinding>
             get() = nfcTagBindings.filter { it.aquariumId == activeAquariumId }
+
+        /** Free-form aquarium events, newest first. */
+        val activeAquariumEvents: List<MaintenanceRecord>
+            get() = maintenanceEvents.filter { it.type == AQUARIUM_EVENT_TYPE_CODE }
     }
     data object Error : AquariumListState
 }
@@ -407,6 +421,7 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                             dosingEvents = unmodifiableDosingEvents,
                             measurementEditorState = previous?.measurementEditorState,
                             maintenanceEditorState = previous?.maintenanceEditorState,
+                            eventEditorState = previous?.eventEditorState,
                             speciesEditorState = previous?.speciesEditorState,
                             stockEditorState = previous?.stockEditorState,
                             productEditorState = previous?.productEditorState,
@@ -541,6 +556,8 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                 selectTab(AppTab.MAINTENANCE)
                 openCreateMaintenanceEditor()
             }
+
+            NfcQuickAction.EVENT -> openEventEditor()
 
             NfcQuickAction.EDIT_AQUARIUM -> openEditEditor(aquariumId)
         }
@@ -1143,6 +1160,61 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
                 throw cancelled
             } catch (_: Exception) {
                 // Keep current list on failure
+            }
+        }
+    }
+
+    fun openEventEditor() {
+        val current = mutableState.value as? AquariumListState.Success ?: return
+        if (current.activeAquariumId == null) return
+        updateSuccess { it.copy(eventEditorState = EventEditorState(), actionError = null) }
+    }
+
+    fun closeEventEditor() {
+        updateSuccess { it.copy(eventEditorState = null) }
+    }
+
+    fun updateEventNotesInput(value: String) {
+        updateEventEditor { it.copy(notesInput = value, validationError = null) }
+    }
+
+    fun saveEvent() {
+        val current = mutableState.value as? AquariumListState.Success ?: return
+        val aquariumId = current.activeAquariumId ?: return
+        val editor = current.eventEditorState ?: return
+        if (editor.isSaving) return
+
+        val notes = editor.notesInput.trim()
+        if (notes.isEmpty()) {
+            updateEventEditor { it.copy(validationError = "Event description cannot be blank.") }
+            return
+        }
+
+        val draft = try {
+            MaintenanceDraft(type = AQUARIUM_EVENT_TYPE_CODE, notes = notes)
+        } catch (e: IllegalArgumentException) {
+            updateEventEditor { it.copy(validationError = e.message ?: "Invalid event.") }
+            return
+        }
+
+        updateEventEditor { it.copy(isSaving = true, validationError = null) }
+        viewModelScope.launch {
+            try {
+                repository.recordMaintenanceEvent(aquariumId, draft)
+                updateSuccess { it.copy(eventEditorState = null) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (e: IllegalArgumentException) {
+                updateEventEditor {
+                    it.copy(isSaving = false, validationError = e.message ?: "Invalid event.")
+                }
+            } catch (_: Exception) {
+                updateEventEditor {
+                    it.copy(
+                        isSaving = false,
+                        validationError = "Could not save the event. Please try again.",
+                    )
+                }
             }
         }
     }
@@ -2238,6 +2310,15 @@ class AquariumListViewModel(private val repository: AquariumRepository) : ViewMo
         updateSuccess { current ->
             val editor = current.maintenanceEditorState ?: return@updateSuccess current
             current.copy(maintenanceEditorState = transform(editor))
+        }
+    }
+
+    private inline fun updateEventEditor(
+        transform: (EventEditorState) -> EventEditorState,
+    ) {
+        updateSuccess { current ->
+            val editor = current.eventEditorState ?: return@updateSuccess current
+            current.copy(eventEditorState = transform(editor))
         }
     }
 

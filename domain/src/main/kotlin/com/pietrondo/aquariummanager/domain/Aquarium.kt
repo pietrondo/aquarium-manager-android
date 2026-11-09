@@ -36,6 +36,9 @@ data class MaintenanceTypeCatalogItem(
     }
 }
 
+/** Built-in maintenance type behind the free-form event log (e.g. "snails laid eggs"). */
+const val AQUARIUM_EVENT_TYPE_CODE = "EVENT"
+
 const val CUSTOM_MAINTENANCE_TYPE_PREFIX = "custom:"
 
 /** Stable catalog code for a user-defined maintenance type. */

@@ -141,6 +141,7 @@ class MeasurementsAndMaintenanceRepositoryTest {
                 "TRIMMING",
                 "SUBSTRATE_VACUUM",
                 "EQUIPMENT_CHECK",
+                "EVENT",
             ),
             catalogTypes.map { it.code },
         )

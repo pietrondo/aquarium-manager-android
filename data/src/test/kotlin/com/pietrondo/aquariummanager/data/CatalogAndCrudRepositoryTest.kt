@@ -95,6 +95,7 @@ class CatalogAndCrudRepositoryTest {
                 "TRIMMING",
                 "SUBSTRATE_VACUUM",
                 "EQUIPMENT_CHECK",
+                "EVENT",
             ),
             catalog.maintenanceTypes.map { it.code }.toSet(),
         )

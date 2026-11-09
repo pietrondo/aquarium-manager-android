@@ -1,6 +1,7 @@
 package com.pietrondo.aquariummanager.presentation
 
 import androidx.lifecycle.ViewModelStore
+import com.pietrondo.aquariummanager.domain.AQUARIUM_EVENT_TYPE_CODE
 import com.pietrondo.aquariummanager.domain.AquariumDetail
 import com.pietrondo.aquariummanager.domain.AquariumDraft
 import com.pietrondo.aquariummanager.domain.AquariumProfile
@@ -179,6 +180,38 @@ class AquariumListViewModelTest {
         assertEquals(0, BigDecimal("28.5").compareTo(updated.netLitres))
         assertEquals(0, BigDecimal("35").compareTo(updated.grossLitres))
         assertEquals(listOf("Freshwater Community", "Shrimp"), updated.profiles.map { it.name })
+    }
+
+    @Test
+    fun loggingAnEventAddsItToTheAquariumTimeline() = runTest {
+        val repo = fakeCrudRepository()
+        val vm = AquariumListViewModel(repo).also { store.put("event", it) }
+        runCurrent()
+
+        vm.openCreateEditor()
+        vm.updateNameInput("Snail Tank")
+        vm.saveAquarium()
+        runCurrent()
+
+        // A blank event is rejected instead of silently saved
+        vm.openEventEditor()
+        vm.updateEventNotesInput("   ")
+        vm.saveEvent()
+        runCurrent()
+        val rejected = vm.state.value as AquariumListState.Success
+        assertNotNull(rejected.eventEditorState?.validationError)
+        assertTrue(rejected.activeAquariumEvents.isEmpty())
+
+        // A real event closes the dialog and lands in the timeline
+        vm.updateEventNotesInput("  Ampullarie hanno deposto le uova  ")
+        vm.saveEvent()
+        runCurrent()
+
+        val state = vm.state.value as AquariumListState.Success
+        assertNull(state.eventEditorState)
+        val event = state.activeAquariumEvents.single()
+        assertEquals(AQUARIUM_EVENT_TYPE_CODE, event.type)
+        assertEquals("Ampullarie hanno deposto le uova", event.notes)
     }
 
     @Test

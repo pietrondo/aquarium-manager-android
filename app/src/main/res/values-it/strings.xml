@@ -50,6 +50,12 @@
     <string name="maintenance_edit_title">Modifica manutenzione</string>
     <string name="maintenance_type_heading">Tipo di manutenzione</string>
     <string name="field_changed_litres">Acqua cambiata</string>
+    <string name="events_heading">Eventi</string>
+    <string name="add_event">Aggiungi evento</string>
+    <string name="events_empty">Nessun evento registrato.</string>
+    <string name="event_create_title">Nuovo evento</string>
+    <string name="field_event_description">Cosa è successo *</string>
+    <string name="event_dialog_hint">Scrivi cosa è successo, ad esempio temperatura alzata per indurre la riproduzione o uova avvistate.</string>
     <string name="nav_livestock">Fauna</string>
     <string name="livestock_title">Fauna e dosaggi</string>
     <string name="livestock_subtitle">Gestisci fauna e flora, catalogo specie, piani di dosaggio e dosi storicizzate</string>
